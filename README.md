@@ -108,7 +108,7 @@ This is required because it dictates the entry point name. Without this flag, th
 Example:
 
 ```
-cpasm.exe main.cpa -asm NASM -arch x86_64 -env Win64 -o main.asm
+cpasm.exe main.cpa -asm NASM -arch x86_64 -env win64 -o main.asm
 ```
 
 The above command receives as input a `main.cpa` file and generates a `main.asm` file containing NASM syntax, built for Windows x86_64. 
