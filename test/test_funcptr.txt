@@ -1,0 +1,59 @@
+from "c" import puts;
+
+
+section .data:
+
+sym foo0_msg:
+    data int.8 "Hello from foo0!\0";
+sym foo1_msg:
+    data int.8 "Hello from foo1!\0";
+sym foo2_msg:
+    data int.8 "Hello from foo2!\0";
+sym foo3_msg:
+    data int.8 "Hello from foo3!\0";
+sym general_msg:
+    data int.8 "The message is:\0";
+
+
+sym funtable export:
+    data ptr foo0;
+    data ptr foo1;
+    data ptr foo2;
+    data ptr foo3;
+
+
+section .text:
+
+fn [callconv] foo0 {
+    call [callconv] puts(foo0_msg);
+}
+fn [callconv] foo1 {
+    call [callconv] puts(foo1_msg);
+}
+fn [callconv] foo2 export {
+    call [callconv] puts(foo2_msg);
+}
+fn [callconv] foo3 {
+    call [callconv] puts(foo3_msg);
+}
+
+fn [callconv] `function@namespace`($arg: ptr) export {
+    call [callconv] puts($arg);
+}
+
+
+entry {
+    $func: ptr;
+
+
+    $func <- (funtable + 24)[ptr];
+
+    call `function@namespace`(general_msg);
+
+    call [callconv] $func;
+
+
+    #push $func;
+    #pop $func;
+}
+

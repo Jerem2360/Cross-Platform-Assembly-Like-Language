@@ -1,0 +1,37 @@
+from "c" import _itoa puts;
+
+section .bss:
+
+sym buffer:
+    data int.64;
+
+
+section .text:
+
+fn [callconv] add($a: int.16, $b: int.16) -> int.16 {
+    result <- 0;
+    result += $a;
+    result += $b;
+}
+
+fn test {
+    if buffer[int.64] == 0 goto end;
+    exit;
+end:
+    buffer[int.64] += 1;
+}
+
+
+entry {
+    $value: int.32;
+
+    buffer[int.64] <- 0;
+
+    $value <- 15;
+    call add($value, 10) -> $value;
+
+    call [callconv] _itoa($value, buffer, 10);
+
+    call [callconv] puts(buffer);
+}
+

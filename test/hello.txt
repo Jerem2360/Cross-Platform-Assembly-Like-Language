@@ -1,0 +1,24 @@
+from "c" import puts;
+
+section .data:
+
+sym msg_hello:
+    data int.8 "Hello World!\r\n\0";
+sym label_text:
+    data int.8 "The message is:\r\n\0";
+
+
+section .text:
+
+
+fn [callconv] print_msg($msg: ptr) {
+    call [callconv] puts(label_text);
+    call [callconv] puts($msg);
+}
+
+
+entry {
+    call print_msg(msg_hello);
+    // exit;
+}
+

@@ -1,0 +1,6 @@
+bin/*.exe
+bin/obj/*.obj
+bin/obj/*.o
+test/*.exe
+test/*.asm
+test/*.obj
