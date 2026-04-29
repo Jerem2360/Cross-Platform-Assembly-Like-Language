@@ -128,3 +128,5 @@ link /entry:main /subsystem:console main.obj kernel32.lib ucrt.lib libcmt.lib
 Linking with libc is only required if the program uses functions from the C stdlib. However, the program
 always requires linkage with the operating system's API to support exiting the process. 
 
+Note that the `main` entrypoint counts as part of libc as long as it follows the libc spec.
+
