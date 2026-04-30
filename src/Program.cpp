@@ -190,7 +190,7 @@ namespace cpasm {
 
 		std::string_view target_name;
 		if (target.as_const_label(&target_name)) {
-			if (!owner->label_exists(target_name) && !prog->symbol_exists(target_name))
+			if (!owner->label_exists(target_name) /*&& !prog->symbol_exists(target_name)*/)
 				return Result::fail(sfmt("branching: unknown target label or symbol '", target_name, "'"), lineno);
 		}
 		return {};
