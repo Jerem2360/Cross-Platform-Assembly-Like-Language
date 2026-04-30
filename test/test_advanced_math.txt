@@ -1,0 +1,15 @@
+
+
+entry {
+    $vari: int.32;
+    $varf: float.32;
+
+    $vari <- 100;
+    $vari /= 10;
+    $vari *= 10;
+
+    $varf <- 100.0;
+    $varf /= 10;
+    $varf *= 10;
+}
+

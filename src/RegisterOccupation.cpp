@@ -59,8 +59,13 @@ namespace cpasm {
 			if (!res && this->high) {
 				res = this->high->alloc(req_sz, base->high);
 			}
-			if (!res)
-				return nullptr;
+			if (!res) {
+				if (this->used == NODE_PARTIAL_USE)
+					return nullptr;
+				this->used = NODE_FULL;
+				return base;
+			}
+				//return nullptr;
 
 			this->_update_usage();
 
