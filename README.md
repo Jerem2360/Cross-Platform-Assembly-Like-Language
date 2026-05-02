@@ -4,7 +4,7 @@ A small language that wraps assembly with a modular cross-platform layer and a f
 
 ## Overview
 
-This repository hosts a compiler for a language called  Cross-PLatform Assembly-Like Language (CPlAL).
+This repository hosts a compiler for a language called  Cross-PLatform Assembly-Like Language (CroPaLL).
 The compiler is developped in pure C++.
 
 
