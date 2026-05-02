@@ -35,7 +35,7 @@ entry {
 
 ```
 
-The main difference with assembly (for now) is that the compiler can handle calling conventions if explicitly told to.
+The main differences with assembly (for now) is that the compiler can handle calling conventions if explicitly told to, and the fact that CroPALL is a cross-platform language.
 
 The [wiki](https://github.com/Jerem2360/Cross-Platform-Assembly-Like-Language/wiki) contains an exhaustive description
 of the currently supported syntax.
