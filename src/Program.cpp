@@ -135,37 +135,37 @@ namespace cpasm {
 
 
 	static bool _generate_iadd(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.add(lhs.resolve(owner), rhs.resolve(owner));
+		return out.add(lhs, rhs);
 	}
 	static bool _generate_isub(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.sub(lhs.resolve(owner), rhs.resolve(owner));
+		return out.sub(lhs, rhs);
 	}
 	static bool _generate_imul(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.mul(lhs.resolve(owner), rhs.resolve(owner));
+		return out.mul(lhs, rhs);
 	}
 	static bool _generate_idiv(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.div(lhs.resolve(owner), rhs.resolve(owner));
+		return out.div(lhs, rhs);
 	}
 	static bool _generate_mov(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.move(lhs.resolve(owner), rhs.resolve(owner));
+		return out.move(lhs, rhs);
 	}
 	static bool _generate_inc(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.inc(lhs.resolve(owner));
+		return out.inc(lhs);
 	}
 	static bool _generate_dec(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.dec(lhs.resolve(owner));
+		return out.dec(lhs);
 	}
 	static bool _generate_ixor(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.bxor(lhs.resolve(owner), rhs.resolve(owner));
+		return out.bxor(lhs, rhs);
 	}
 	static bool _generate_iand(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.band(lhs.resolve(owner), rhs.resolve(owner));
+		return out.band(lhs, rhs);
 	}
 	static bool _generate_ior(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.bor(lhs.resolve(owner), rhs.resolve(owner));
+		return out.bor(lhs, rhs);
 	}
 	static bool _generate_imod(AssemblyWriter& out, const Operand& lhs, const Operand& rhs, const Code* owner) {
-		return out.mod(lhs.resolve(owner), rhs.resolve(owner));
+		return out.mod(lhs, rhs);
 	}
 
 
@@ -190,7 +190,7 @@ namespace cpasm {
 
 		std::string_view target_name;
 		if (target.as_const_label(&target_name)) {
-			if (!owner->label_exists(target_name) /*&& !prog->symbol_exists(target_name)*/)
+			if (!owner->label_exists(target_name) /*&& !prog->symbol_exists(target_name) */ )
 				return Result::fail(sfmt("branching: unknown target label or symbol '", target_name, "'"), lineno);
 		}
 		return {};
@@ -352,7 +352,7 @@ namespace cpasm {
 		const CallingConvention* callconv,
 		bool never_returns = false
 	) {
-		Operand retloc_resolved = return_location.resolve(owner);
+		Operand retloc_resolved = return_location.resolve();
 
 		//auto callconv = CurrentImpl.dflt_calling_convention();
 
@@ -405,7 +405,7 @@ namespace cpasm {
 					auto arg_reg = callconv->fp_arg_registers[i];
 					if (args[i].type().size)
 						arg_reg = arg_reg->smallest_to_fit(args[i].type().size);
-					if (!args[i].resolve(owner).is_related_register(arg_reg)) {
+					if (!args[i].resolve().is_related_register(arg_reg)) {
 						out.move(Operand::from_register(arg_reg), args[i]);
 					}
 				}
@@ -413,7 +413,7 @@ namespace cpasm {
 					auto arg_reg = callconv->arg_registers[i];
 					if (args[i].type().size)
 						arg_reg = arg_reg->smallest_to_fit(args[i].type().size);
-					if (!args[i].resolve(owner).is_related_register(arg_reg)) {
+					if (!args[i].resolve().is_related_register(arg_reg)) {
 						out.move(Operand::from_register(arg_reg), args[i]);
 					}
 				}
@@ -425,7 +425,7 @@ namespace cpasm {
 				for (int i = (int)args.size(); i >= callconv->arg_registers.size(); --i) {
 					size_t padding = remaining_for_align(out.stack_offset(), callconv->stk_args_align);
 					out.push_amount(padding);
-					out.push(args[i].resolve(owner));
+					out.push(args[i]);
 					args_size += (padding + args[i].type().size);
 				}
 			}
@@ -513,17 +513,17 @@ namespace cpasm {
 			comment_txt << "  (INSTR 'goto'; line " << this->lineno << ')';
 			out.comment(comment_txt.view());
 
-			return out.jump(this->operands[0].resolve(owner));
+			return out.jump(this->operands[0]);
 		case Type::IF_GOTO:
 			comment_txt.clear();
 			comment_txt << "  (INSTR 'if goto'; line " << this->lineno << ')';
 			out.comment(comment_txt.view());
 
 			return out.jump_if(
-				this->operands[0].resolve(owner),
+				this->operands[0],
 				reinterpret_cast<const Operator*>(this->extra),
-				this->operands[1].resolve(owner),
-				this->operands[2].resolve(owner)
+				this->operands[1],
+				this->operands[2]
 			);
 		case Type::CALL:
 			comment_txt.clear();
@@ -532,8 +532,8 @@ namespace cpasm {
 
 			return _call_function(
 				out,
-				this->operands[0].resolve(owner),
-				this->operands[1].resolve(owner),
+				this->operands[0].resolve(),
+				this->operands[1].resolve(),
 				vec_slice(this->operands, 2, this->operands.size() - 2),
 				owner,
 				prog,
@@ -544,7 +544,7 @@ namespace cpasm {
 			comment_txt << "  (INSTR 'exit'; line " << this->lineno << ')';
 			out.comment(comment_txt.view());
 
-			return out.exit(owner, this->operands[0].resolve(owner));
+			return out.exit(owner, this->operands[0]);
 		case Type::RETURN:
 			comment_txt.clear();
 			comment_txt << "  (INSTR 'return'; line " << this->lineno << ')';
@@ -561,15 +561,9 @@ namespace cpasm {
 	}
 
 	bool CustomInstruction::generate(AssemblyWriter& out, const Code* owner) const {
-		std::vector<Operand> resolved;
-		resolved.reserve(this->operands.size());
-		for (auto& op : this->operands) {
-			resolved.emplace_back(op.resolve(owner));
-		}
-
 		std::stringstream cmt_str;
 		cmt_str << '#' << this->name;
-		return out.custom_instruction(sview(this->name), resolved, cmt_str.view());
+		return out.custom_instruction(sview(this->name), this->operands, cmt_str.view());
 	}
 
 	Result FuncParam::check(int lineno) const {

@@ -1,8 +1,29 @@
 #include "AsmWriter.hpp"
+
+#include <utility>
+
 #include "Implementation.hpp"
 
 
 namespace cpasm {
+	/*
+	Wrapper around a function pointer that returns false if the provided pointer is null.
+	*/
+	template<class ...TArgs>
+	class optional_funcptr {
+		bool (*_func) (AssemblyWriter&, TArgs...);
+
+	public:
+		inline constexpr optional_funcptr(bool (*func)(AssemblyWriter&, TArgs...)) :
+			_func(func)
+		{ }
+		inline bool operator()(AssemblyWriter& aw, perfect_forward<TArgs> ...args) const {
+			if (_func)
+				return _func(aw, args...);
+			return false;
+		}
+	};
+
 	AssemblyWriter::AssemblyWriter(std::ostream& out) :
 		_output(out), 
 		_asm_funcs(CurrentImpl.assembler_functions()), 
@@ -103,7 +124,7 @@ namespace cpasm {
 		op_writers.reserve(operands.size());
 
 		for (auto& op : operands) {
-			op_writers.push_back(op.writer(this));
+			op_writers.push_back(op.resolve().writer(this));
 		}
 
 		return this->_asm_funcs->cpu_instruction(this->_output, name, std::move(op_writers), comment);
@@ -217,16 +238,22 @@ namespace cpasm {
 	}
 
 
+	static bool _is_float(const Operand& op) {
+		return op.type().type == DataType::FLOAT;
+	}
+	static bool _is_signed(const Operand& op) {
+		return op.type().type == DataType::INT;
+	}
+
 	static OpFlags _compute_flags(const Operand& lhs, const Operand& rhs) {
 		uint8_t size = min(lhs.type().size, rhs.type().size);
 		if (!size)
 			size = max(lhs.type().size, rhs.type().size);
 
 		std::underlying_type_t<OpFlags::_op_status> float_st = OpFlags::NONE;
-		const CPURegister* reg;
-		if (lhs.as_register(&reg) && reg->support.supportsFloatVar())
+		if (_is_float(lhs))
 			float_st |= OpFlags::LEFT;
-		if (rhs.as_register(&reg) && reg->support.supportsFloatVar())
+		if (_is_float(rhs))
 			float_st |= OpFlags::RIGHT;
 
 		std::underlying_type_t<OpFlags::_op_status> memory_st = OpFlags::NONE;
@@ -236,9 +263,9 @@ namespace cpasm {
 			memory_st |= OpFlags::RIGHT;
 
 		std::underlying_type_t<OpFlags::_op_status> signed_st = OpFlags::NONE;
-		if (lhs.type().type == DataType::Type::INT)
+		if (_is_signed(lhs))
 			signed_st |= OpFlags::LEFT;
-		if (rhs.type().type == DataType::Type::INT)
+		if (_is_signed(rhs))
 			signed_st |= OpFlags::RIGHT;
 
 		return OpFlags{
@@ -264,22 +291,25 @@ namespace cpasm {
 	}
 
 
-	template<class ...AT>
-	static bool _call_or_fail(
-		bool (*fn)(AssemblyWriter&, AT...),
-		AssemblyWriter& writer, AT&& ...args
-	) {
-		if (!fn)
-			return false;
-		return fn(writer, std::forward<AT>(args)...);
-	}
+	//template<class ...AT>
+	//static bool _call_or_fail(
+	//	bool (*fn)(AssemblyWriter&, AT...),
+	//	AssemblyWriter& writer, AT&& ...args
+	//) {
+	//	if (!fn)
+	//		return false;
+	//	return fn(writer, std::forward<AT>(args)...);
+	//}
 
 
 	bool AssemblyWriter::push(const Operand& operand) {
 		int cnt = 0;
-		bool res = _call_or_fail(
-			this->_arch_funcs->push,
-			*this, operand, &cnt
+		//bool res = _call_or_fail(
+		//	this->_arch_funcs->push,
+		//	*this, operand.resolve(), &cnt
+		//);
+		bool res = optional_funcptr(this->_arch_funcs->push)(
+			*this, operand.resolve(), &cnt
 		);
 		if (!cnt)
 			cnt = operand.type().size;
@@ -289,9 +319,12 @@ namespace cpasm {
 	}
 	bool AssemblyWriter::pop(const Operand& operand) {
 		int cnt = 0;
-		bool res = _call_or_fail(
-			this->_arch_funcs->pop,
-			*this, operand, &cnt
+		//bool res = _call_or_fail(
+		//	this->_arch_funcs->pop,
+		//	*this, operand.resolve(), &cnt
+		//);
+		bool res = optional_funcptr(this->_arch_funcs->pop)(
+			*this, operand.resolve(), &cnt
 		);
 		if (!cnt)
 			cnt = operand.type().size;
@@ -304,9 +337,12 @@ namespace cpasm {
 			this->_stack_offset += (int)cnt;
 		if (!cnt)
 			return true;
-		return _call_or_fail(
-			this->_arch_funcs->push_amount,
-			*this, std::move(cnt)
+		//return _call_or_fail(
+		//	this->_arch_funcs->push_amount,
+		//	*this, std::move(cnt)
+		//);
+		return optional_funcptr(this->_arch_funcs->push_amount)(
+			*this, cnt
 		);
 	}
 	bool AssemblyWriter::pop_amount(size_t cnt, bool nested) {
@@ -314,108 +350,158 @@ namespace cpasm {
 			this->_stack_offset += (int)cnt;
 		if (!cnt)
 			return true;
-		return _call_or_fail(
-			this->_arch_funcs->pop_amount,
-			*this, std::move(cnt)
+		//return _call_or_fail(
+		//	this->_arch_funcs->pop_amount,
+		//	*this, std::move(cnt)
+		//);
+		return optional_funcptr(this->_arch_funcs->pop_amount)(
+			*this, cnt
 		);
 	}
 	bool AssemblyWriter::jump(const Operand& target) {
-		return _call_or_fail(
-			this->_arch_funcs->jump,
-			*this, target
+		//return _call_or_fail(
+		//	this->_arch_funcs->jump,
+		//	*this, target.resolve()
+		//);
+		return optional_funcptr(this->_arch_funcs->jump)(
+			*this, target.resolve()
 		);
 	}
 	bool AssemblyWriter::jump_if(const Operand& target, const Operator* op, const Operand& lhs, const Operand& rhs) {
-		return _call_or_fail(
-			this->_arch_funcs->jump_if,
-			*this, target, lhs, rhs, std::move(op), _compute_flags(lhs, rhs)
+		//return _call_or_fail(
+		//	this->_arch_funcs->jump_if,
+		//	*this, target.resolve(), lhs.resolve(), rhs.resolve(), std::move(op), _compute_flags(lhs, rhs)
+		//);
+		return optional_funcptr(this->_arch_funcs->jump_if)(
+			*this, target.resolve(), lhs.resolve(), rhs.resolve(), op, _compute_flags(lhs, rhs)
 		);
 	}
 	bool AssemblyWriter::call(const Operand& target) {
-		return _call_or_fail(
-			this->_arch_funcs->call,
-			*this, target
+		//return _call_or_fail(
+		//	this->_arch_funcs->call,
+		//	*this, target.resolve()
+		//);
+		return optional_funcptr(this->_arch_funcs->call)(
+			*this, target.resolve()
 		);
 	}
 	bool AssemblyWriter::return_() {
-		return _call_or_fail(
-			this->_arch_funcs->return_,
+		//return _call_or_fail(
+		//	this->_arch_funcs->return_,
+		//	*this
+		//);
+		return optional_funcptr(this->_arch_funcs->return_)(
 			*this
 		);
 	}
 	bool AssemblyWriter::add(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->add,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->add,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->add)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::sub(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->sub,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->sub,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->sub)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::mul(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->mul,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->mul,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->mul)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::div(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->div,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->div,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->div)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::move(const Operand& target, const Operand& src) {
-		return _call_or_fail(
-			this->_arch_funcs->move,
-			*this, target, src, _compute_flags(target, src)
+		//return _call_or_fail(
+		//	this->_arch_funcs->move,
+		//	*this, target.resolve(), src.resolve(), _compute_flags(target, src)
+		//);
+		return optional_funcptr(this->_arch_funcs->move)(
+			*this, target.resolve(), src.resolve(), _compute_flags(target, src)
 		);
 	}
 	bool AssemblyWriter::inc(const Operand& target) {
-		return _call_or_fail(
-			this->_arch_funcs->inc,
-			*this, target, _compute_flags(target)
+		//return _call_or_fail(
+		//	this->_arch_funcs->inc,
+		//	*this, target.resolve(), _compute_flags(target)
+		//);
+		return optional_funcptr(this->_arch_funcs->inc)(
+			*this, target.resolve(), _compute_flags(target)
 		);
 	}
 	bool AssemblyWriter::dec(const Operand& target) {
-		return _call_or_fail(
-			this->_arch_funcs->dec,
-			*this, target, _compute_flags(target)
+		//return _call_or_fail(
+		//	this->_arch_funcs->dec,
+		//	*this, target.resolve(), _compute_flags(target)
+		//);
+		return optional_funcptr(this->_arch_funcs->dec)(
+			*this, target.resolve(), _compute_flags(target)
 		);
 	}
 	bool AssemblyWriter::bxor(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->bxor,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->bxor,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->bxor)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::band(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->band,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->band,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->band)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::bor(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->bor,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->bor,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->bor)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::mod(const Operand& target, const Operand& op) {
-		return _call_or_fail(
-			this->_arch_funcs->mod,
-			*this, target, op, _compute_flags(target, op)
+		//return _call_or_fail(
+		//	this->_arch_funcs->mod,
+		//	*this, target.resolve(), op.resolve(), _compute_flags(target, op)
+		//);
+		return optional_funcptr(this->_arch_funcs->mod)(
+			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
 	bool AssemblyWriter::exit(const Code* owner, const Operand& exitcode) {
-		return _call_or_fail(
-			this->_env_funcs->exit_process,
-			*this, std::move(owner), exitcode
+		//return _call_or_fail(
+		//	this->_env_funcs->exit_process,
+		//	*this, std::move(owner), exitcode.resolve()
+		//);
+		return optional_funcptr(this->_env_funcs->exit_process)(
+			*this, owner, exitcode.resolve()
 		);
 	}
-
 
 	AssemblyGenerator::AssemblyGenerator() :
 		_ss(), _writer(_ss), _instr_stack(), _labels(), _order()
@@ -498,6 +584,10 @@ namespace cpasm {
 		}
 	}
 
+	TmpRegWrapper::TmpRegWrapper() :
+		_reg(nullptr), _back(nullptr), _src(), _occupation(nullptr), _aw(nullptr), _pull(false), _status(ST_EXISTING_OP)
+	{ }
+
 
 	TmpRegWrapper::TmpRegWrapper(TmpRegWrapper&& src) noexcept :
 		_reg(src._reg), _back(src._back), _src(src._src), _occupation(src._occupation), _aw(src._aw), _pull(src._pull), _status(src._status)
@@ -537,9 +627,9 @@ namespace cpasm {
 
 	Operand TmpRegWrapper::get() const {
 		if (this->_back)
-			return Operand::from_register(_fit_operand(this->_back, *this->_src));
+			return Operand::from_register(this->_back/*_fit_operand(this->_back, *this->_src)*/);
 		if (this->_reg)
-			return Operand::from_register(_fit_operand(this->_reg, *this->_src));
+			return Operand::from_register(this->_reg/*_fit_operand(this->_reg, *this->_src)*/);
 		return *this->_src;
 	}
 

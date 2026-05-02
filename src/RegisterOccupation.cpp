@@ -41,7 +41,35 @@ namespace cpasm {
 	}
 
 	const CPURegister* RegisterOccupation::_node::alloc(uint8_t req_sz, const CPURegister* base) {
-		if (req_sz == base->size) {
+		if (this->used == NODE_FULL)
+			return nullptr;
+
+		if (req_sz > base->size)
+			return nullptr;
+
+		// try to allocate children
+		const CPURegister* res = nullptr;
+
+		if (this->low) res = this->low->alloc(req_sz, base->low);
+		if (this->high && !res) res = this->high->alloc(req_sz, base->high);
+
+		if (res) {
+			if (this->low && this->high)
+				this->used = static_cast<usage_t>(get_underlying(this->used) + 1);
+			else
+				this->used = NODE_FULL;
+			return res;
+		}
+
+		// if that fails, try to allocate ourself
+
+		if (this->used != NODE_EMPTY)
+			return nullptr;
+		
+		this->used = NODE_FULL;
+		return base;
+
+		/*if (req_sz == base->size) {
 			if (this->used)
 				return nullptr;
 			this->used = NODE_FULL;
@@ -72,11 +100,43 @@ namespace cpasm {
 			return res;
 		}
 
-		return nullptr;
+		return nullptr;*/
 	}
 
-	bool RegisterOccupation::_node::free(const CPURegister* to_free, const CPURegister* base) {
-		if (to_free == base) {
+	RegisterOccupation::_node::free_res_t RegisterOccupation::_node::free(const CPURegister* to_free, const CPURegister* base) {
+		if (this->used == NODE_EMPTY)
+			return FREE_NONE;
+
+		// try to free children
+		free_res_t res = FREE_NONE;
+
+		if (this->low) res = this->low->free(to_free, base->low);
+		if (this->high && !res) res = this->high->free(to_free, base->high);
+
+		// if that fully frees a child, our usage must be updated
+		if (res == FREE_ALL) {
+			if (this->low && this->high)
+				this->used = static_cast<usage_t>(get_underlying(this->used) - 1);
+			else
+				this->used = NODE_EMPTY;
+
+			return this->used ? FREE_PARTIAL : FREE_ALL;
+		}
+		// if it partially frees a child, then our usage remains the same
+		if (res == FREE_PARTIAL)
+			return FREE_PARTIAL;
+
+		// if that doesn't free anything, try to free ourself
+		if (this->used != NODE_FULL)
+			return FREE_NONE;
+
+		if (to_free != base)
+			return FREE_NONE;
+
+		this->used = NODE_EMPTY;
+		return FREE_ALL;
+
+		/*if (to_free == base) {
 			if (this->used != NODE_FULL)
 				return false;
 			this->used = NODE_EMPTY;
@@ -98,11 +158,37 @@ namespace cpasm {
 			this->_update_usage();
 			return true;
 		}
-		return false;
+		return false;*/
 	}
 
 	const CPURegister* RegisterOccupation::_node::reserve(const CPURegister* reg, const CPURegister* base) {
 		if (this->used == NODE_FULL)
+			return nullptr;
+
+		if (reg->size > base->size)
+			return nullptr;
+
+		const CPURegister* res = nullptr;
+		if (this->low) res = this->low->reserve(reg, base->low);
+		if (this->high && !res) res = this->high->reserve(reg, base->high);
+
+		if (res) {
+			if (this->low && this->high)
+				this->used = static_cast<usage_t>(get_underlying(this->used) + 1);
+			else
+				this->used = NODE_FULL;
+			return res;
+		}
+
+		if (this->used != NODE_EMPTY)
+			return nullptr;
+		if (reg != base)
+			return nullptr;
+
+		this->used = NODE_FULL;
+		return base;
+
+		/*if (this->used == NODE_FULL)
 			return nullptr;
 		if (reg != base) {
 			if (this->low && this->low->reserve(reg, base->low)) {
@@ -118,7 +204,7 @@ namespace cpasm {
 		if (this->used == NODE_PARTIAL_USE)
 			return nullptr;
 		this->used = NODE_FULL;
-		return reg;
+		return reg;*/
 	}
 
 	void RegisterOccupation::_node::clear() {

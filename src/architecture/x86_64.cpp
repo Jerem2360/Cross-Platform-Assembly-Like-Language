@@ -429,7 +429,12 @@ namespace cpasm::x86_64 {
 	}
 
 	static bool _mov_float(AssemblyWriter& out, const Operand& target, const Operand& src, uint8_t size) {
-		auto backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::GP_backed(true, false), size);
+		TmpRegWrapper backed_src;
+		if (src.is_constant())
+			backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::GP_backed(true, false, false), size);
+		else
+			backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::FP_backed(false, true));
+
 		if (size == 4)
 			return out.cpu_instruction(MOVD, { target, backed_src.get() }, "move");
 		if (size == 8)
@@ -470,8 +475,10 @@ namespace cpasm::x86_64 {
 	}
 
 	static bool _mul_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
-		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
-		auto backed_target = out.wrap_tmp(op, true, true, TmpRegFlags::FP_backed());  // target must be FP register
+		Operand ser_op = _serialize_const_float(op, size);
+
+		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
+		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed());  // target must be FP register
 
 		if (size == 4)
 			return out.cpu_instruction(MULSS, { backed_target.get(), backed_op.get() }, "mul");
@@ -481,14 +488,18 @@ namespace cpasm::x86_64 {
 	}
 
 	static bool _mul_int(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
-		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(true, false), size);  // op must be memory or GP register
+		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(false, false), size);  // op must be memory or GP register
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::GP_backed());  // target must be GP register
-		return out.cpu_instruction(IMUL, { backed_target.get(), backed_target.get(), backed_op.get() }, "mul");
+		if (op.is_constant())
+			return out.cpu_instruction(IMUL, { backed_target.get(), backed_target.get(), backed_op.get() }, "mul");
+		return out.cpu_instruction(IMUL, { backed_target.get(), backed_op.get() });
 	}
 
 	static bool _div_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
-		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
-		auto backed_target = out.wrap_tmp(op, true, true, TmpRegFlags::FP_backed());  // target must be FP register
+		Operand ser_op = _serialize_const_float(op, size);
+
+		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
+		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed());  // target must be FP register
 
 		if (size == 4)
 			return out.cpu_instruction(DIVSS, { backed_target.get(), backed_op.get() }, "div");

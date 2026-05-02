@@ -240,7 +240,7 @@ namespace cpasm {
 
 		bool operator ==(const SimpleOperand& other) const;
 
-		SimpleOperand resolve(const Code* ctx) const;
+		SimpleOperand resolve() const;
 
 		constexpr ~SimpleOperand() {
 			this->_destroy();
@@ -298,7 +298,7 @@ namespace cpasm {
 
 		bool operator ==(const Operand& other) const;
 
-		Operand resolve(const Code* ctx) const;
+		Operand resolve() const;
 	};
 }
 

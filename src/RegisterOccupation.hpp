@@ -20,9 +20,11 @@ namespace cpasm {
 			std::unique_ptr<_node> low;
 			std::unique_ptr<_node> high;
 
+			enum free_res_t : uint8_t { FREE_NONE = 0, FREE_PARTIAL, FREE_ALL };
+
 			_node(const CPURegister* base);
 			const CPURegister* alloc(uint8_t req_sz, const CPURegister* base);
-			bool free(const CPURegister* to_free, const CPURegister* base);
+			free_res_t free(const CPURegister* to_free, const CPURegister* base);
 			const CPURegister* reserve(const CPURegister* reg, const CPURegister* base);
 			void clear();
 

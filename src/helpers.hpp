@@ -402,5 +402,28 @@ namespace cpasm {
 	using vartype = typename __helpers::h_vartype<T>::type;
 	template<auto X>
 	using type_of = vartype<decltype(X)>;
+
+
+	namespace __helpers {
+		template<class T>
+		struct h_perfect_forward {
+			using type = const std::remove_cvref_t<T>&;
+		};
+		template<class T>
+		struct h_perfect_forward<T*> {
+			using type = T*;
+		};
+		template<class T>
+		struct h_perfect_forward<T&> {
+			using type = T&;
+		};
+		template<class T>
+		struct h_perfect_forward<T&&> {
+			using type = T&&;
+		};
+	}
+
+	template<class T>
+	using perfect_forward = typename __helpers::h_perfect_forward<T>::type;
 }
 

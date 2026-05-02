@@ -1,15 +1,43 @@
+from "c" import puts _itoa _gcvt_s;
 
+
+section .bss:
+
+sym idata:
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+sym fdata:
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+
+
+section .text:
 
 entry {
     $vari: int.32;
-    $varf: float.32;
+    $varf: float.64;
+    //$vard: float.64;
 
     $vari <- 100;
     $vari /= 10;
     $vari *= 10;
 
-    $varf <- 100.0;
-    $varf /= 10;
-    $varf *= 10;
+    call [callconv] _itoa($vari, idata, 10);
+
+    call [callconv] puts(idata);
+
+    $varf <- 100.35;
+    $varf /= 10.0;
+    $varf *= 10.0;
+
+    //#cvtss2sd $vard, $varf;
+
+    call [callconv] _gcvt_s(fdata, 32, $varf, 10);
+
+    call [callconv] puts(fdata);
 }
 

@@ -152,22 +152,22 @@ namespace cpasm {
 		switch (this->_type) {
 		case TY_CONST_INT:
 			return {
-				DataType::Type::UINT,
+				DataType::UINT,
 				0
 			};
 		case TY_CONST_CHAR:
 			return {
-				DataType::Type::UINT,
+				DataType::UINT,
 				1
 			};
 		case TY_CONST_FLOAT:
 			return {
-				DataType::Type::FLOAT,
+				DataType::FLOAT,
 				0
 			};
 		case TY_CONST_LABEL:
 			return {
-				DataType::Type::PTR,
+				DataType::PTR,
 				CurrentImpl.pointer_size()
 			};
 		case TY_BOX:
@@ -178,12 +178,12 @@ namespace cpasm {
 
 		case TY_REGISTER:
 			return {
-				DataType::Type::UINT,  // TODO: access somehow the type of the regster (through a ptr to the code object ?)
+				this->_reg->support.supportsFloatVar() ? DataType::FLOAT : DataType::UINT,
 				this->_reg->size
 			};
 		default:
 			return {
-				DataType::Type::INVALID,
+				DataType::INVALID,
 				0
 			};
 		}
@@ -259,14 +259,16 @@ namespace cpasm {
 		}
 		std::string_view str_val;
 		if (this->as_const_str(&str_val)) {
+			std::string val0 = scopy(str_val);
 			return [=](std::ostream&) {
-				writer->const_str(str_val);
+				writer->const_str(sview(val0));
 			};
 		}
 		if (this->as_const_label(&str_val)) {
 			bool local = this->_owner ? this->_owner->label_exists(str_val) : false;
+			std::string val1 = scopy(str_val);
 			return [=](std::ostream&) {
-				local ? writer->use_local_label(str_val) : writer->use_global_label(str_val);
+				local ? writer->use_local_label(sview(val1)) : writer->use_global_label(sview(val1));
 			};
 		}
 		if (this->as_box(&str_val)) {
@@ -338,12 +340,15 @@ namespace cpasm {
 		}
 	}
 
-	SimpleOperand SimpleOperand::resolve(const Code* ctx) const {
+	SimpleOperand SimpleOperand::resolve() const {
 		std::string_view name;
 		if (!this->as_box(&name))
 			return *this;
 
-		const CPURegister* reg = map_get(ctx->boxes, scopy(name), Box{}).reg;
+		if (!this->_owner)
+			return *this;
+
+		const CPURegister* reg = map_get(this->_owner->boxes, scopy(name), Box{}).reg;
 		return SimpleOperand::from_register(reg, this->_owner, this->lineno);
 	}
 
@@ -551,13 +556,13 @@ namespace cpasm {
 		if (this->is_simple())
 			return this->_base.writer(writer);
 
-		const SimpleOperand* base = &this->_base;
-		const SimpleOperand* index = &this->_index;
-		const SimpleOperand* scale = &this->_scale;
+		const SimpleOperand base = this->_base;
+		const SimpleOperand index = this->_index;
+		const SimpleOperand scale = this->_scale;
 		uint8_t sz = this->_type.size;
 
 		return [=](std::ostream&) {
-			writer->deref(*base, *index, *scale, sz);
+			writer->deref(base, index, scale, sz);
 		};
 	}
 
@@ -587,12 +592,12 @@ namespace cpasm {
 		return true;
 	}
 
-	Operand Operand::resolve(const Code* ctx) const {
+	Operand Operand::resolve() const {
 		return Operand(
-			this->_base.resolve(ctx),
+			this->_base.resolve(),
 			this->_type,
-			this->_index.resolve(ctx),
-			this->_scale.resolve(ctx),
+			this->_index.resolve(),
+			this->_scale.resolve(),
 			this->lineno
 		);
 	}

@@ -109,6 +109,7 @@ namespace cpasm {
 			bool pull,
 			uint8_t size
 		);
+		TmpRegWrapper();
 		TmpRegWrapper(const TmpRegWrapper&) = delete;
 		TmpRegWrapper(TmpRegWrapper&&) noexcept;
 		TmpRegWrapper& operator =(const TmpRegWrapper&) = delete;
