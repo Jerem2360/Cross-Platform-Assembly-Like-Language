@@ -14,10 +14,13 @@ The language's syntax looks alot like that of assembly. For instance, here's wha
 ```
 from "c" import puts;  // requires linking with libc
 
+section .data:  // data segment
+
 sym message:
     // declares a string where each character is an int.8 (i.e. an 8-bit signed integer)
     data int.8 "HelloWorld!\0";
 
+section .text:  // code segment
 
 entry {
     /*
