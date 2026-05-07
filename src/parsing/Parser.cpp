@@ -146,7 +146,12 @@ namespace cpasm {
 
 
 	Result Parser::fail(std::string_view msg, state st, const std::source_location where) {
-		int lineno = (*this)[0].lineno;
+		int lineno;
+		if (this->remaining())
+			lineno = (*this)[0].lineno;
+		else 
+			lineno = -1;
+
 		st.restore();
 		return Result::fail(msg, lineno, where);
 	}

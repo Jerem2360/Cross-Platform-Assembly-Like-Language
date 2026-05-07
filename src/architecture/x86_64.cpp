@@ -427,19 +427,52 @@ namespace cpasm::x86_64 {
 		auto backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::GP_backed());
 		return _mov_simple(out, target, backed_src.get());
 	}
+	static bool _mov_dq(AssemblyWriter& out, const Operand& target, const Operand& src, uint8_t size) {
+		if (size == 4)
+			return out.cpu_instruction(MOVD, { target, src }, "move");
+		if (size == 8)
+			return out.cpu_instruction(MOVQ, { target, src }, "move");
+		return false;
+	}
+	// this assumes that src is not a constant
+	static bool _mov_float2float(AssemblyWriter& out, const Operand& target, const Operand& src, OpFlags flags) {
+		if (flags.memory_st & OpFlags::ALL)  // one of the two operands is memory
+			return _mov_dq(out, target, src, flags.size);
+		
+		if (flags.size == 4)
+			return out.cpu_instruction(MOVSS, { target, src }, "move");
+		if (flags.size == 8)
+			return out.cpu_instruction(MOVSD, { target, src }, "move");
+		return false;
+	}
+	// for when src xor target is not a float; also assumes that src is not a constant
+	static bool _mov_int2float(AssemblyWriter& out, const Operand& target, const Operand& src, OpFlags flags) {
+		if (flags.float_st != OpFlags::LEFT) {  // the target operand is not a float
+			if (flags.memory_st == OpFlags::RIGHT)  // if the other is a memory, then no float operation is needed
+				return _mov_simple(out, target, src); 
 
-	static bool _mov_float(AssemblyWriter& out, const Operand& target, const Operand& src, uint8_t size) {
+			return _mov_dq(out, target, src, flags.size);
+		}
+		// if src is not a float
+		if (flags.memory_st == OpFlags::LEFT)  // if target is memory
+			return _mov_simple(out, target, src);
+
+		return _mov_dq(out, target, src, flags.size);
+	}
+
+	static bool _mov_float(AssemblyWriter& out, const Operand& target, const Operand& src, OpFlags flags) {
+		// turing float constants into int constants is taken care of by the caller of this function (x86_64Impl::move)
 		TmpRegWrapper backed_src;
 		if (src.is_constant())
-			backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::GP_backed(true, false, false), size);
+			backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::GP_backed(true, false, false), flags.size);
 		else
-			backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::FP_backed(false, true));
+			backed_src = out.wrap_tmp(src, true, false, TmpRegFlags::FP_backed(false, false, false)); // TODO: find another solution than having an object backing nothing
 
-		if (size == 4)
-			return out.cpu_instruction(MOVD, { target, backed_src.get() }, "move");
-		if (size == 8)
-			return out.cpu_instruction(MOVQ, { target, backed_src.get() }, "move");
-		return false;
+
+		if (flags.float_st == OpFlags::ALL)
+			return _mov_float2float(out, target, backed_src.get(), flags);
+
+		return _mov_int2float(out, target, backed_src.get(), flags);
 	}
 
 	static bool _add_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
@@ -729,7 +762,7 @@ namespace cpasm::x86_64 {
 			if (!flags.float_st)  // none of the operands are float
 				return _mov_simple(out, target, ser_src);
 
-			return _mov_float(out, target, ser_src, flags.size);
+			return _mov_float(out, target, ser_src, flags);
 		}
 		PROP bool add(AssemblyWriter& out, const Operand& target, const Operand& op, OpFlags flags) {
 			if (flags.memory_st == OpFlags::ALL) {  // x86 ADD does not support two memory operands in one instruction

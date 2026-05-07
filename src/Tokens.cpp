@@ -7,64 +7,6 @@
 
 
 namespace cpasm {
-	static char _eval_escape_sequence(char esc) {
-		switch (esc) {
-		case '\\':
-			return '\\';
-		case 'n':
-			return '\n';
-		case 'r':
-			return '\r';
-		case 't':
-			return '\t';
-		case 'b':
-			return '\b';
-		case '"':
-			return '"';
-		case '\'':
-			return '\'';
-		case '0':
-			return '\0';
-		default:
-			return esc;
-		}
-	}
-
-	constexpr auto _HEXDIGITS = char_union<char_range<'0', '9'>, char_range<'a', 'f'>, char_range<'A', 'F'>>;
-
-	size_t _digit_from_char(char c) {
-		if (c >= 'a')
-			return c - 'a';
-		if (c >= 'A')
-			return c - 'A';
-		return c - '0';
-	}
-
-	static size_t _int_from_str(std::string_view s, unsigned int base = 10) {
-		size_t res = 0;
-		
-		size_t power = (size_t)std::pow(base, s.size());
-
-		for (size_t i = s.size(); i >= 0; --i) {
-			power /= base;
-
-			size_t dig = _digit_from_char(s[i]);
-			if (dig >= base)
-				return 0;
-			res += power * dig;
-		}
-		return res;
-	}
-
-	static char _eval_ascii_escape(std::string_view s, int index) {
-		if (s[index] == 'x') {
-			if (s.size() <= (index + 2))
-				return 0;
-			char str_num[2] = { s[index + 1], s[index + 2] };
-			return static_cast<char>(_int_from_str({ str_num, 2 }, 16));
-		}
-		return _eval_escape_sequence(s[index]);
-	}
 
 	static Result _parse_attributes(Parser& parser, std::vector<std::string>* out, Parser::state st) {
 
@@ -194,10 +136,22 @@ namespace cpasm {
 		case ConstantTokenType::NUMBER:
 		{
 			size_t n_dots = std::count(this->value.begin(), this->value.end(), '.');
-			if (!n_dots)
-				return SimpleOperand::from_const_int(std::stoull(this->value), this->lineno);
-			if (n_dots == 1)
-				return SimpleOperand::from_const_float(std::stod(this->value), this->lineno);
+			if (!n_dots) {
+				size_t value;
+				int res = parse_integer_literal(sview(this->value), &value);
+				if (res < 0)
+					return {};  // TODO: find a way to propagate error
+
+				return SimpleOperand::from_const_int(value, this->lineno);
+			}
+			if (n_dots == 1) {
+				double value;
+				int res = parse_float_literal(sview(this->value), &value);
+				if (res < 0)
+					return {};  // TODO: find a way to propagate error
+
+				return SimpleOperand::from_const_float(value, this->lineno);
+			}
 			return {};
 		}
 		default:

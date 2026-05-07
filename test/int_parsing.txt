@@ -1,0 +1,70 @@
+from "c" import puts _itoa _gcvt_s;
+
+
+section .data:
+
+sym integers:
+    data int.32 0b1001;
+    data int.32 0o1234567;
+    data int.32 123456789;
+    data int.32 0x13579bd;
+
+
+sym floats:
+    data float.64 0b11.10;
+    data float.64 0o1234.567;
+    data float.64 12345.6789;
+    data float.64 0x2468.ac;
+
+
+section .bss:
+
+sym buffer:
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+    data int.64;
+
+section .text:
+
+fn [callconv] print_int($val: int.32) {
+    call [callconv] _itoa($val, buffer, 10);
+    call [callconv] puts(buffer);
+}
+
+fn [callconv] print_float($val: float.64) {
+    call [callconv] _gcvt_s(buffer, 64, $val, 20);
+    call [callconv] puts(buffer);
+}
+
+entry {
+    $i: int.64;
+
+    $fval: float.64;
+
+    $i <- 0;
+
+loop1:
+    if $i >= 4 goto end1;
+    call print_int((integers + $i * 4)[int.32]);
+
+    $i++;
+    goto loop1;
+end1:
+    $i <- 0;
+
+loop2:
+    if $i >= 4 goto end2;
+    $fval <- (floats + $i * 8)[float.64];
+    call print_float($fval);
+
+    $i++;
+    goto loop2;
+end2:
+
+}
+

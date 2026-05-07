@@ -9,6 +9,10 @@
 namespace cpasm {
 
 	static std::string_view _error_msgs[] = {
+		"Invalid floating-point literal",
+		"Integer overflow; number too large to be represented",
+		"Invalid integer literal",
+		"Invalid number digit",
 		"Invalid character in string definition",
 		"Invalid character escape sequence",
 		"End of file unexpectedly enountered in string",
@@ -211,6 +215,132 @@ namespace cpasm {
 		return _fail(E_INVALID_STR_CHAR, data);  // invalid string char
 	}
 
+	static int _parse_base_specifier(std::string_view data) {
+		if (data.size() <= 2)
+			return 10;
+		if (data[0] != '0')
+			return 10;
+
+		switch (data[1]) {
+		case 'b':
+		case 'B':
+			return 2;
+		case 'o':
+		case 'O':
+			return 8;
+		case 'x':
+		case 'X':
+			return 16;
+		default:
+			return 10;
+		}
+	}
+
+	static int _parse_uint(std::string_view data, size_t* out) {
+		if (!data.size())
+			return E_INVALID_INT_LIT;
+
+		size_t res = 0;
+
+		int cnt = 0;
+		int base = _parse_base_specifier(data);
+
+		if (base != 10)
+			cnt += 2;
+
+		for (cnt; cnt < data.size(); cnt++) {
+			int digit = _get_digit(data[cnt], base);
+			if (digit < 0)
+				return E_INVALID_DIGIT;
+			
+			size_t prev = res;
+			res *= base;
+			res += digit;
+
+			if (res < prev)  // maybe find a more robust way of detecting overflows ?
+				return E_INT_OVERFLOW;
+		}
+
+		*out = res;
+		return cnt;
+	}
+
+	static int _parse_sint(std::string_view data, ssize_t* out) {
+		if (!data.size())
+			return E_INVALID_INT_LIT;
+
+		bool negative = false;
+		if (data[0] == '-') {
+			if (data.size() == 1)
+				return E_INVALID_INT_LIT;
+			negative = true;
+			data = ssubview(data, 1, data.size() - 1);
+		}
+
+		size_t number;
+		int res = _parse_uint(data, &number);
+		if (res <= 0)
+			return res;
+		
+		if (negative && (number > SSIZE_MAX))
+			return E_INT_OVERFLOW;
+
+		*out = (negative ? -1 : 1) * static_cast<ssize_t>(number);
+
+		return res + negative;
+	}
+
+	static int _parse_float(std::string_view data, double* out, char decimal_sep) {
+		if (!data.size())
+			return E_INVALID_FLOAT_LIT;
+
+		bool negative = false;
+		if (data[0] == '-') {
+			if (data.size() == 1)
+				return E_INVALID_FLOAT_LIT;
+			negative = true;
+			data = ssubview(data, 1, data.size() - 1);
+		}
+
+		int cnt = 0;
+		int base = _parse_base_specifier(data);
+		if (base != 10)
+			cnt += 2;
+
+		double res = 0;
+
+		bool parsing_decimal = false;
+
+		double decimal_place = 1 / (double)base;
+
+		for (cnt; cnt < data.size(); cnt++) {
+			if (data[cnt] == decimal_sep) {
+				if (parsing_decimal)
+					return E_INVALID_FLOAT_LIT;
+				parsing_decimal = true;
+				continue;
+			}
+
+			int digit = _get_digit(data[cnt], base);
+			if (digit < 0)
+				return E_INVALID_DIGIT;
+			
+			if (parsing_decimal) {
+				res += decimal_place * (double)digit;
+				decimal_place /= (double)base;
+			} else {
+				res *= (double)base;
+				res += (double)digit;
+			}
+		}
+
+		res *= (negative ? -1 : 1);
+
+		*out = res;
+
+		return cnt + negative;
+	}
+
 	int parse_string_chars(ParserView data, std::stringstream& out, char delimiter) {
 		
 		while (1) {
@@ -223,6 +353,14 @@ namespace cpasm {
 			out << c;
 			data = data.advance(cnt);
 		}
+	}
+
+	int parse_integer_literal(std::string_view data, size_t* out) {
+		return _parse_uint(data, out);  // maybe add support for signed integers in the future ?
+	}
+
+	int parse_float_literal(std::string_view data, double* out, char decimal_sep) {
+		return _parse_float(data, out, decimal_sep);
 	}
 
 	void write_string_error(int err, std::ostream& out) {
