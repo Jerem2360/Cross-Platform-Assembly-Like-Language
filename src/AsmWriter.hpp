@@ -45,25 +45,33 @@ namespace cpasm {
 		*/
 		static constexpr uint8_t MASK_SKIPDIFFREGS = 1 << 3;
 
+		/*
+		0 => don't back register operands of the same type as the backing register
+		1 => back register operands of the same type as the backing register 
+		*/
+		static constexpr uint8_t MASK_BACKSAMEREGS = 1 << 4;
+
 		inline constexpr TmpRegFlags(uint8_t _val) :
 			_value(_val)
 		{ }
 
 	public:
-		static inline constexpr TmpRegFlags GP_backed(bool back_constants = true, bool back_memory = true, bool back_diffregs = true) {
+		static inline constexpr TmpRegFlags GP_backed(bool back_constants = true, bool back_memory = true, bool back_diffregs = true, bool back_sameregs = false) {
 			uint8_t flags = (MASK_SKIPCONST * !back_constants) |
 				(MASK_SKIPMEM * !back_memory) |
-				(MASK_SKIPDIFFREGS * !back_diffregs);
+				(MASK_SKIPDIFFREGS * !back_diffregs) |
+				(MASK_BACKSAMEREGS * back_sameregs);
 
 			return TmpRegFlags{
 				flags
 			};
 		}
-		static inline constexpr TmpRegFlags FP_backed(bool back_constants = true, bool back_memory = true, bool back_diffregs = true) {
+		static inline constexpr TmpRegFlags FP_backed(bool back_constants = true, bool back_memory = true, bool back_diffregs = true, bool back_sameregs = false) {
 			uint8_t flags = MASK_BACKREGTYPE |
 				(MASK_SKIPCONST * !back_constants) |
 				(MASK_SKIPMEM * !back_memory) |
-				(MASK_SKIPDIFFREGS * !back_diffregs);
+				(MASK_SKIPDIFFREGS * !back_diffregs) |
+				(MASK_BACKSAMEREGS * back_sameregs);
 			
 			return TmpRegFlags{
 				flags
@@ -80,6 +88,9 @@ namespace cpasm {
 		}
 		inline constexpr bool backs_diffreg() const {
 			return !(_value & MASK_SKIPDIFFREGS);
+		}
+		inline constexpr bool backs_samereg() const {
+			return _value & MASK_BACKSAMEREGS;
 		}
 	};
 
@@ -141,7 +152,7 @@ namespace cpasm {
 		const CallingConvention* current_callconv() const;
 		unsigned int stack_offset() const;
 		void stack_offset(unsigned int to_add);
-		void get_temp_usage(std::vector<const CPURegister*>* out_regs) const;
+		void get_temp_usage(std::vector<const CPURegister*>* out_regs) const;  // TODO: this function is useless
 
 		// assembler functionality:
 		bool cpu_instruction(CPUInstruction instr, std::vector<Operand> operands, std::string_view comment = "") const;

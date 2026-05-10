@@ -48,8 +48,13 @@ namespace cpasm {
 			copy = true;
 		if (accept.backs_memory() && !src.is_simple())
 			copy = true;
+
+		// TODO: the two following checks are suboptimal; should we fix them ?
 		if (accept.backs_diffreg() && src.as_register(nullptr) && (floatness != accept.is_FP_backed()))
 			copy = true;
+		if (accept.backs_samereg() && src.as_register(nullptr) && (floatness == accept.is_FP_backed()))
+			copy = true;
+			
 		auto res = TmpRegWrapper(
 			*this, 
 			accept.is_FP_backed() ? this->_fp_tmp_regs : this->_tmp_regs, 
