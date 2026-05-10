@@ -248,7 +248,9 @@ namespace cpasm {
 
 		if (!instr->operands[2].supports_runtime())
 			return Result::fail("Instruction 'if goto': operand 2 does not support runtime operations", lineno);
-
+			
+		if (!instr->operands[0].as_const_label(nullptr))
+			return Result::fail("Instruction 'if goto': operand 0 must be a label name.", lineno);
 		return _check_branch_target(instr->operands[0], prog, owner, lineno);
 	}
 	static Result _check_call_instr(const Instruction* instr, const Program* prog, const Code* owner, int lineno) {

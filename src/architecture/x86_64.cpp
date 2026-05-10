@@ -1,4 +1,6 @@
 #include <bit>
+#include <vector>
+#include <string_view>
 #include "x86_64.hpp"
 #include "../AsmWriter.hpp"
 
@@ -445,6 +447,34 @@ namespace cpasm::x86_64 {
 	};
 
 
+	/**
+	* Wraps cpu instructions so that any memory operands with a label/symbol as a base that specifies an index or scale has
+	* the base put into a temporary register beforehand.
+	* This comes from the fact that x86-64 does not allow combining RIP-relative addressing with [base+index*scale+offset] style adressing.
+	* e.g.:
+	*
+	* mov rax, [label + rbx*2]; illegal on x86, combines RIP-relative adressing with [base + index*scale]
+	*
+	* becomes:
+	*
+	* mov r15, label; fine, RIP-relative address calculated here
+	* mov rax, [r15 + rbx*2]; fine, not RIP-relative
+	*/
+	static bool _cpu_instruction2(AssemblyWriter& out, CPUInstruction instr, std::vector<Operand> operands, std::string_view comment = "") {
+		std::vector<_LabeledDerefWrapper> wrappers;
+		wrappers.reserve(operands.size());
+
+		int i = 0;
+		for (auto& op : operands) {
+			wrappers.emplace_back(out, op);
+			operands[i] = wrappers[i].get();
+			i++;
+		}
+
+		return out.cpu_instruction(instr, operands, comment);
+	}
+
+
 	/*
 	Serialize a float constant into an int constant of the appropriate size.
 	*/
@@ -470,9 +500,7 @@ namespace cpasm::x86_64 {
 	}
 
 	static bool _mov_simple(AssemblyWriter& out, const Operand& target, const Operand& src) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_src = _LabeledDerefWrapper(out, src);
-		return out.cpu_instruction(MOV, { memwrapped_target.get(), memwrapped_src.get() }, "move");
+		return _cpu_instruction2(out, MOV, { target, src }, "move");
 	}
 
 	static bool _mov_mem2mem(AssemblyWriter& out, const Operand& target, const Operand& src) {
@@ -480,22 +508,17 @@ namespace cpasm::x86_64 {
 		return _mov_simple(out, target, backed_src.get());
 	}
 	static bool _mov_dq(AssemblyWriter& out, const Operand& target, const Operand& src, uint8_t size) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_src = _LabeledDerefWrapper(out, src);
-
 		if (size == 4)
-			return out.cpu_instruction(MOVD, { memwrapped_target.get(), memwrapped_src.get() }, "move");
+			return _cpu_instruction2(out, MOVD, { target, src }, "move");
 		if (size == 8)
-			return out.cpu_instruction(MOVQ, { memwrapped_target.get(), memwrapped_src.get() }, "move");
+			return _cpu_instruction2(out, MOVQ, { target, src }, "move");
 		return false;
 	}
 	static bool _mov_sssd(AssemblyWriter& out, const Operand& target, const Operand& src, uint8_t size) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_src = _LabeledDerefWrapper(out, src);
 		if (size == 4)
-			return out.cpu_instruction(MOVSS, { memwrapped_target.get(), memwrapped_src.get() }, "move");
+			return _cpu_instruction2(out, MOVSS, { target, src }, "move");
 		if (size == 8)
-			return out.cpu_instruction(MOVSD, { memwrapped_target.get(), memwrapped_src.get() }, "move");
+			return _cpu_instruction2(out, MOVSD, { target, src }, "move");
 		return false;
 	}
 	// this assumes that src is not a constant
@@ -539,44 +562,32 @@ namespace cpasm::x86_64 {
 		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(true, false, false));  // wrap potential constants with a GP register
 		auto backed_op2 = out.wrap_tmp(backed_op.get(), true, false, TmpRegFlags::FP_backed(true, false, true));  // src needs to be an xmm reg or memory
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed(true, true, true));  // target must be an xmm reg
-		
-		auto memwrapped_target = _LabeledDerefWrapper(out, backed_target.get());
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op2.get());
 
 		if (size == 4)
-			return out.cpu_instruction(ADDSS, { memwrapped_target.get(), memwrapped_op.get() }, "add");
+			return _cpu_instruction2(out, ADDSS, { backed_target.get(), backed_op2.get() }, "add");
 		if (size == 8)
-			return out.cpu_instruction(ADDSD, { memwrapped_target.get(), memwrapped_op.get() }, "add");
+			return _cpu_instruction2(out, ADDSD, { backed_target.get(), backed_op2.get() }, "add");
 		return false;
 	}
 
 	static bool _add_int(AssemblyWriter& out, const Operand& target, const Operand& op) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_op = _LabeledDerefWrapper(out, op);
-
-		return out.cpu_instruction(ADD, { memwrapped_target.get(), memwrapped_op.get() }, "add");
+		return _cpu_instruction2(out, ADD, { target, op }, "add");
 	}
 
 	static bool _sub_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
 		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(true, false, false));  // wrap potential constants with a GP register
 		auto backed_op2 = out.wrap_tmp(backed_op.get(), true, false, TmpRegFlags::FP_backed(true, false, true));  // src needs to be an xmm reg or memory
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed(true, true, true));  // target must be an xmm reg
-		
-		auto memwrapped_target = _LabeledDerefWrapper(out, backed_target.get());
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op2.get());
 
 		if (size == 4)
-			return out.cpu_instruction(SUBSS, { memwrapped_target.get(), memwrapped_op.get() }, "sub");
+			return _cpu_instruction2(out, SUBSS, {backed_target.get(), backed_op2.get()}, "sub");
 		if (size == 8)
-			return out.cpu_instruction(SUBSD, { memwrapped_target.get(), memwrapped_op.get() }, "sub");
+			return _cpu_instruction2(out, SUBSD, {backed_target.get(), backed_op2.get()}, "sub");
 		return false;
 	}
 
 	static bool _sub_int(AssemblyWriter& out, const Operand& target, const Operand& op) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_op = _LabeledDerefWrapper(out, op);
-
-		return out.cpu_instruction(SUB, { memwrapped_target.get(), memwrapped_op.get() }, "sub");
+		return _cpu_instruction2(out, SUB, { target, op }, "sub");
 	}
 
 	static bool _mul_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
@@ -585,13 +596,11 @@ namespace cpasm::x86_64 {
 		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed());  // target must be FP register
 
-		auto memwrapped_target = _LabeledDerefWrapper(out, backed_target.get());
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op.get());
-
 		if (size == 4)
-			return out.cpu_instruction(MULSS, { memwrapped_target.get(), memwrapped_op.get() }, "mul");
+			return _cpu_instruction2(out, MULSS, { backed_target.get(), backed_op.get() }, "mul");
 		if (size == 8)
-			return out.cpu_instruction(MULSD, { memwrapped_target.get(), memwrapped_op.get() }, "mul");
+			return _cpu_instruction2(out, MULSD, { backed_target.get(), backed_op.get() }, "mul");
+
 		return false;
 	}
 
@@ -599,12 +608,9 @@ namespace cpasm::x86_64 {
 		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(false, false), size);  // op must be memory or GP register
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::GP_backed());  // target must be GP register
 
-		auto memwrapped_target = _LabeledDerefWrapper(out, backed_target.get());
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op.get());
-
 		if (op.is_constant())
-			return out.cpu_instruction(IMUL, { memwrapped_target.get(), memwrapped_target.get(), memwrapped_op.get() }, "mul");
-		return out.cpu_instruction(IMUL, { memwrapped_target.get(), memwrapped_op.get() });
+			return _cpu_instruction2(out, IMUL, { backed_target.get(), backed_target.get(), backed_op.get() }, "mul");
+		return _cpu_instruction2(out, IMUL, { backed_target.get(), backed_op.get() }, "mul");
 	}
 
 	static bool _div_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
@@ -612,14 +618,11 @@ namespace cpasm::x86_64 {
 
 		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed());  // target must be FP register
-		
-		auto memwrapped_target = _LabeledDerefWrapper(out, backed_target.get());
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op.get());
 
 		if (size == 4)
-			return out.cpu_instruction(DIVSS, { memwrapped_target.get(), memwrapped_op.get() }, "div");
+			return _cpu_instruction2(out, DIVSS, { backed_target.get(), backed_op.get() }, "div");
 		if (size == 8)
-			return out.cpu_instruction(DIVSD, { memwrapped_target.get(), memwrapped_op.get() }, "div");
+			return _cpu_instruction2(out, DIVSD, { backed_target.get(), backed_op.get() }, "div");
 		return false;
 	}
 
@@ -634,37 +637,27 @@ namespace cpasm::x86_64 {
 			reg_tgt_hi = RDX->smallest_to_fit(size);
 		}
 
+		// these may look unused, but here we depend on the destructor calls at the end of the function.
 		auto backed_target = out.wrap_given_reg(target, reg_tgt_lo, true, true);
 		auto backed_target_hi = out.wrap_given_reg(Operand::from_const_int(0), reg_tgt_hi, true, false);
 		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(true, false), size);
-		
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op.get());
 
 		if (_signed)
-			return out.cpu_instruction(IDIV, { memwrapped_op.get() }, "div");
+			return _cpu_instruction2(out, IDIV, { backed_op.get() }, "div");
 
-		return out.cpu_instruction(DIV, { memwrapped_op.get() }, "div");
+		return _cpu_instruction2(out, DIV, { backed_op.get() }, "div");
 	}
 
 	static bool _bxor_int(AssemblyWriter& out, const Operand& target, const Operand& op) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_op = _LabeledDerefWrapper(out, op);
-
-		return out.cpu_instruction(XOR, { memwrapped_target.get(), memwrapped_op.get() }, "bxor");
+		return _cpu_instruction2(out, XOR, { target, op }, "bxor");
 	}
 
 	static bool _band_int(AssemblyWriter& out, const Operand& target, const Operand& op) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_op = _LabeledDerefWrapper(out, op);
-
-		return out.cpu_instruction(AND, { memwrapped_target.get(), memwrapped_op.get() }, "band");
+		return _cpu_instruction2(out, AND, { target, op }, "band");
 	}
 
 	static bool _bor_int(AssemblyWriter& out, const Operand& target, const Operand& op) {
-		auto memwrapped_target = _LabeledDerefWrapper(out, target);
-		auto memwrapped_op = _LabeledDerefWrapper(out, op);
-
-		return out.cpu_instruction(OR, { memwrapped_target.get(), memwrapped_op.get() }, "bor");
+		return _cpu_instruction2(out, OR, { target, op }, "bor");
 	}
 
 	static bool _mod_int(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size, bool _signed) {
@@ -683,20 +676,15 @@ namespace cpasm::x86_64 {
 		auto backed_op = out.wrap_tmp(op, true, false, TmpRegFlags::GP_backed(true, false), size);
 
 		out.move(backed_target_hi.get(), Operand::from_const_int(0));
-		
-		auto memwrapped_op = _LabeledDerefWrapper(out, backed_op.get());
 
 		if (_signed)
-			return out.cpu_instruction(IDIV, { memwrapped_op.get() }, "mod");
+			return _cpu_instruction2(out, IDIV, { backed_op.get() }, "mod");
 
-		return out.cpu_instruction(DIV, { memwrapped_op.get() }, "mod");
+		return _cpu_instruction2(out, DIV, { backed_op.get() }, "mod");
 	}
 
 	static bool _cmp_simple(AssemblyWriter& out, const Operand& lhs, const Operand& rhs) {
-		auto memwrapped_lhs = _LabeledDerefWrapper(out, lhs);
-		auto memwrapped_rhs = _LabeledDerefWrapper(out, rhs);
-
-		return out.cpu_instruction(CMP, { memwrapped_lhs.get(), memwrapped_rhs.get() }, "jump_if: compare");
+		return _cpu_instruction2(out, CMP, { lhs, rhs }, "jump_if: compare");
 	}
 
 	static bool _cmp_mem2mem(AssemblyWriter& out, const Operand& lhs, const Operand& rhs) {
@@ -716,13 +704,10 @@ namespace cpasm::x86_64 {
 		auto wrapped_lhs = out.wrap_tmp(lhs, true, false, TmpRegFlags::FP_backed());
 		auto wrapped_rhs = out.wrap_tmp(rhs, true, false, TmpRegFlags::FP_backed(true, false));
 		
-		auto memwrapped_lhs = _LabeledDerefWrapper(out, wrapped_lhs.get());
-		auto memwrapped_rhs = _LabeledDerefWrapper(out, wrapped_rhs.get());
-		
 		if (pflags->size == 4)
-			return out.cpu_instruction(UCOMISS, { memwrapped_lhs.get(), memwrapped_rhs.get() }, "jump_if: compare");
+			return _cpu_instruction2(out, UCOMISS, { lhs, rhs }, "jump_if: compare");
 		if (pflags->size == 8)
-			return out.cpu_instruction(UCOMISD, { memwrapped_lhs.get(), memwrapped_rhs.get() }, "jump_if: compare");
+			return _cpu_instruction2(out, UCOMISD, { lhs, rhs }, "jump_if: compare");
 		return false;
 	}
 
@@ -881,7 +866,7 @@ namespace cpasm::x86_64 {
 				return out.cpu_instruction(MOVQ, { Operand::from_deref_register(RSP), op }, "push");
 			}
 			*out_cnt = op.toplevel_register().type().size;
-			return out.cpu_instruction(PUSH, { op.toplevel_register() }, "push");
+			return _cpu_instruction2(out, PUSH, { op.toplevel_register() }, "push");
 		}
 		PROP bool pop(AssemblyWriter& out, const Operand& target, int* out_cnt) {
 			const CPURegister* reg;
@@ -893,7 +878,7 @@ namespace cpasm::x86_64 {
 				return out.pop_amount(reg->size, true);
 			}
 			*out_cnt = target.toplevel_register().type().size;
-			return out.cpu_instruction(POP, { target.toplevel_register() }, "pop");
+			return _cpu_instruction2(out, POP, { target.toplevel_register() }, "pop");
 		}
 		PROP bool push_amount(AssemblyWriter& out, size_t cnt) {
 			return out.cpu_instruction(SUB, { Operand::from_register(RSP), Operand::from_const_int(cnt) }, "push_amount");
@@ -962,10 +947,10 @@ namespace cpasm::x86_64 {
 			return _div_float(out, target, op, flags.size);
 		}
 		PROP bool inc(AssemblyWriter& out, const Operand& target, OpFlags flags) {
-			return out.cpu_instruction(INC, { target }, "inc");
+			return _cpu_instruction2(out, INC, { target }, "inc");
 		}
 		PROP bool dec(AssemblyWriter& out, const Operand& target, OpFlags flags) {
-			return out.cpu_instruction(DEC, { target }, "dec");
+			return _cpu_instruction2(out, DEC, { target }, "dec");
 		}
 		PROP bool bxor(AssemblyWriter& out, const Operand& target, const Operand& op, OpFlags flags) {
 			if (flags.memory_st == OpFlags::ALL) {  // x86 XOR does not support two memory operands in one instruction
@@ -992,7 +977,7 @@ namespace cpasm::x86_64 {
 			return _mod_int(out, target, op, flags.size, flags.signed_st & OpFlags::LEFT);
 		}
 		PROP bool jump(AssemblyWriter& out, const Operand& target) {
-			return out.cpu_instruction(JMP, { target }, "jump");
+			return _cpu_instruction2(out, JMP, { target }, "jump");
 		}
 		PROP bool jump_if(AssemblyWriter& out, const Operand& target, const Operand& lhs, const Operand& rhs, const Operator* op, OpFlags flags) {
 			if (!_compare(out, lhs, rhs, &flags))
@@ -1004,13 +989,13 @@ namespace cpasm::x86_64 {
 
 			CPUInstruction jmp_instr = flags.signed_st == OpFlags::ALL ? _signed_jmp_if_table[diff] : _unsigned_jmp_if_table[diff];
 
-			return out.cpu_instruction(jmp_instr, { target }, "jump_if");
+			return _cpu_instruction2(out, jmp_instr, { target }, "jump_if");
 		}
 		PROP bool call(AssemblyWriter& out, const Operand& target) {
-			return out.cpu_instruction(CALL, { target }, "call");
+			return _cpu_instruction2(out, CALL, { target }, "call");
 		}
 		PROP bool return_(AssemblyWriter& out) {
-			return out.cpu_instruction(RET, {}, "return");
+			return _cpu_instruction2(out, RET, {}, "return");
 		}
 	};
 

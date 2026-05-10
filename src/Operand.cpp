@@ -530,12 +530,16 @@ namespace cpasm {
 			return res.push("Invalid deref base");
 		if (this->_base.type().size != CurrentImpl.pointer_size())
 			return Result::fail(sfmt("Can only dereference pointer-sized (", (int)CurrentImpl.pointer_size() * 8, "bits) operands, found ", (int)this->_base.type().size * 8, "bit operand instead"), this->lineno);
+		if (this->_base.type().type == DataType::FLOAT)
+			return Result::fail("Cannot dereference a float value", this->lineno);
 		if (this->_index) {
 			res = this->_index.check(runtime, program, code);
 			if (!res)
 				return res.push("Invalid deref index");
 			if (this->_index.as_const_label(nullptr))
-				return Result::fail("Index cannot be a label or symbol.", this->lineno);
+				return Result::fail("Index cannot be a label or symbol", this->lineno);
+			if (this->_base.type().type == DataType::FLOAT)
+				return Result::fail("Dereference index cannot be a float value", this->lineno);
 		}
 		if (this->_scale)
 			res = this->_scale.check(runtime, program, code);
