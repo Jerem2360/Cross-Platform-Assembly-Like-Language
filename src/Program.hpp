@@ -146,7 +146,15 @@ namespace cpasm {
 		SimpleOperand value;  // must be a constant
 
 		Result check(const Program*, int lineno) const;
-		bool generate(const AssemblyWriter&) const;
+		bool generate(AssemblyWriter&) const;
+	};
+
+	struct UninitDataDecl {
+		DataType type;
+		int cnt;
+
+		Result check(const Program*, int lineno) const;
+		bool generate(AssemblyWriter&) const;
 	};
 
 	enum class StatementType : uint8_t {
@@ -191,7 +199,7 @@ namespace cpasm {
 		std::vector<std::string> _includes;
 
 		std::vector<DataDeclaration> _initialized_decls;
-		std::vector<DataType> _uninitialized_decls;
+		std::vector<UninitDataDecl> _uninitialized_decls;
 
 		std::vector<std::string> _sections;
 
@@ -206,7 +214,7 @@ namespace cpasm {
 		void add_symbol(std::string_view name, int lineno);
 		void add_function(CodeRef code, std::string_view name, array_view<std::string> attributes, array_view<FuncParam> params, DataType return_type, int lineno);
 		void add_include(std::string name, int lineno);  // TODO: change this to an std::string_view ?
-		void add_decl(DataType ty, SimpleOperand init, int lineno);
+		void add_decl(DataType ty, SimpleOperand init, int lineno, int cnt = 0);
 		//void set_entry_point(CodeRef source);
 		CodeRef add_entry_point();
 		void add_export(std::string_view name);

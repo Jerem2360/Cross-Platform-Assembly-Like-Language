@@ -129,8 +129,8 @@ namespace cpasm::NASM {
 			out << '\n';
 			return true;
 		}
-		PROP bool reserve_bytes(std::ostream& out, uint8_t size) {
-			out << "    " << _resb_sizes[size] << " 1\n";
+		PROP bool reserve_bytes(std::ostream& out, uint8_t elem_size, int cnt) {
+			out << "    " << _resb_sizes[elem_size] << ' ' << cnt << '\n';
 			return true;
 		}
 		PROP bool set_bitness(std::ostream& out, uint8_t bits) {

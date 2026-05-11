@@ -17,7 +17,7 @@ namespace cpasm {
 		PROP bool define_bytes(std::ostream& out, uint8_t size, writer_t value) {
 			return false;
 		}
-		PROP bool reserve_bytes(std::ostream& out, uint8_t size) {
+		PROP bool reserve_bytes(std::ostream& out, uint8_t elem_size, int cnt) {
 			return false;
 		}
 		PROP bool set_bitness(std::ostream& out, uint8_t bits) {

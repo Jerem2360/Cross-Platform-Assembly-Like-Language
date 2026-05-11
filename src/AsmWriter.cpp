@@ -139,10 +139,10 @@ namespace cpasm {
 			return false;
 		return this->_asm_funcs->define_bytes(this->_output, size, value.writer(this));
 	}
-	bool AssemblyWriter::reserve_bytes(uint8_t size) const {
+	bool AssemblyWriter::reserve_bytes(uint8_t size, int cnt) const {
 		if (!this->_asm_funcs->reserve_bytes)
 			return false;
-		return this->_asm_funcs->reserve_bytes(this->_output, size);
+		return this->_asm_funcs->reserve_bytes(this->_output, size, cnt);
 	}
 	bool AssemblyWriter::set_bitness(uint8_t bits) const {
 		if (!this->_asm_funcs->set_bitness)

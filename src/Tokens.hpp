@@ -265,9 +265,15 @@ namespace cpasm {
 		bool decode(Program*, int lineno) const; 
 	};
 
+	/*
+	TODO: maybe make array declaration and single value declaration separate statements for clarity ?
+	String declarations would fall in the array declaration category.
+	However this would make the assembly generation more complicated.
+	*/
 	struct DataDeclarationStatementToken {
 		DataTypeToken type;
 		ConstantToken value;
+		ConstantToken cnt;
 		int lineno = 1;
 
 		static Result parse(Parser&, DataDeclarationStatementToken* out);

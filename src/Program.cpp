@@ -620,8 +620,18 @@ namespace cpasm {
 		return res.push("Invalid global data declaration.");
 	}
 
-	bool DataDeclaration::generate(const AssemblyWriter& out) const {
+	bool DataDeclaration::generate(AssemblyWriter& out) const {
 		return out.define_bytes(this->datatype.size, this->value);
+	}
+
+	Result UninitDataDecl::check(const Program*, int lineno) const {
+		if (this->cnt <= 0)
+			return Result::fail("Number of elements in uninitialized array must be strictly positive", lineno);
+		return {};
+	}
+
+	bool UninitDataDecl::generate(AssemblyWriter& out) const {
+		return out.reserve_bytes(this->type.size, this->cnt);
 	}
 
 	bool Code::gen_function_call(AssemblyWriter& out, const Operand& target, const Operand& return_location, array_view<Operand> args, bool never_returns, std::string_view callconv_str) const {
@@ -878,7 +888,7 @@ namespace cpasm {
 				res += this->_initialized_decls[sel.index].check(this, sel.lineno);
 				break;
 			case StatementType::DATA_DECL_UNINIT:
-				res += this->_uninitialized_decls[sel.index].check(false, sel.lineno);
+				res += this->_uninitialized_decls[sel.index].check(this, sel.lineno);
 				break;
 			//case StatementType::ENTRY_POINT:
 			//	res += this->_entry_point()->check(this);
@@ -922,7 +932,7 @@ namespace cpasm {
 				res = this->_initialized_decls[idx].generate(out);
 				break;
 			case StatementType::DATA_DECL_UNINIT:
-				res = out.reserve_bytes(this->_uninitialized_decls[idx].size);
+				res = this->_uninitialized_decls[idx].generate(out);
 				break;
 			case StatementType::INCLUDE:
 				res = out.include_file(this->_includes[idx]);
@@ -1059,9 +1069,12 @@ namespace cpasm {
 		_add_stmt(this->_stmt_order, this->_includes, StatementType::INCLUDE, lineno, name);
 	}
 
-	void Program::add_decl(DataType ty, SimpleOperand init, int lineno) {
+	void Program::add_decl(DataType ty, SimpleOperand init, int lineno, int cnt) {
 		if (init.is_empty()) {
-			_add_stmt(this->_stmt_order, this->_uninitialized_decls, StatementType::DATA_DECL_UNINIT, lineno, ty);
+			_add_stmt(this->_stmt_order, this->_uninitialized_decls, StatementType::DATA_DECL_UNINIT, lineno, UninitDataDecl{
+				.type = ty,
+				.cnt = cnt,
+			});
 			return;
 		}
 		_add_stmt(this->_stmt_order, this->_initialized_decls, StatementType::DATA_DECL_INIT, lineno, DataDeclaration{

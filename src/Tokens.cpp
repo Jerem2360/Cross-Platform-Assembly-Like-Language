@@ -1093,16 +1093,37 @@ namespace cpasm {
 			return parser.fail("Missing data type for data declaration", st);
 
 		res = ConstantToken::parse(parser, &out->value);
-		if (!res) {
-			out->value = { "", ConstantTokenType::NUMBER };
+		if (res) {
+			out->cnt = { "1", ConstantTokenType::NUMBER };
+			return {};
 		}
+
+		if (parser.delimiter("[")) {
+			if (!ConstantToken::parse(parser, &out->cnt))
+				return parser.fail("Missing number of elements for uninitialized array", st);
+
+			if (out->cnt.type != ConstantTokenType::NUMBER)  // TODO: RN if cnt is a float it gets set to 0; make this behaviour a little less weird
+				return parser.fail("Size of uninitialized array must be a number", st);
+			
+			if (!parser.delimiter("]"))
+				return parser.fail("Missing ']' after number of elements in uninitialized array", st);
+		} else 
+			out->cnt = { "1", ConstantTokenType::NUMBER };
+
+		out->value = { "", ConstantTokenType::NUMBER };
 		return {};
 	}
 	bool DataDeclarationStatementToken::decode(Program* prog, int lineno) const {
+		SimpleOperand op_cnt = this->cnt.decode(nullptr);
+		size_t cnt;
+		if (!op_cnt.as_const_int(&cnt))
+			cnt = 0;
+
 		prog->add_decl(
 			this->type.decode(),
 			this->value.value.size() ? this->value.decode(nullptr) : SimpleOperand{},
-			lineno
+			lineno,
+			(int)cnt
 		);
 		return true;
 	}

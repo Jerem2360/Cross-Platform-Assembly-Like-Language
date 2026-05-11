@@ -158,7 +158,7 @@ namespace cpasm {
 		bool cpu_instruction(CPUInstruction instr, std::vector<Operand> operands, std::string_view comment = "") const;
 		bool custom_instruction(std::string_view name, std::vector<Operand> operands, std::string_view comment = "") const;
 		bool define_bytes(uint8_t size, const SimpleOperand& value) const;
-		bool reserve_bytes(uint8_t size) const;
+		bool reserve_bytes(uint8_t elem_size, int cnt) const;
 		bool set_bitness(uint8_t bits) const;
 		bool def_global_label(std::string_view name) const;
 		bool def_local_label(std::string_view name) const;

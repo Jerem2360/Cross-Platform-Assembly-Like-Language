@@ -20,14 +20,7 @@ sym floats:
 section .bss:
 
 sym buffer:
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
+    data int.8[64];
 
 section .text:
 
