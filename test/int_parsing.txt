@@ -24,6 +24,10 @@ sym buffer:
 
 section .text:
 
+/*
+Idea: use "$var: type in @reg" to customize where a variable goes ?
+*/
+
 fn [callconv] print_int($val: int.32) {
     call [callconv] _itoa($val, buffer, 10);
     call [callconv] puts(buffer);
