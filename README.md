@@ -4,7 +4,7 @@ A small language that wraps assembly with a modular cross-platform layer and a f
 
 ## Overview
 
-This repository hosts a compiler for a language called  Cross-PLatform Assembly-Like Language (CPlAL).
+This repository hosts a compiler for a language called  Cross-PLatform Assembly-Like Language (CroPALL).
 The compiler is developped in pure C++.
 
 
@@ -42,7 +42,7 @@ of the currently supported syntax.
 
 ## Basic functioning
 
-This compiler takes as an input source files of the CPlAL language, and outputs assembly source files, which the developer can
+This compiler takes as an input source files of the CroPALL language, and outputs assembly source files, which the developer can
 then assemble and link with the tools they want.
 
 So far, the only supported assembler is NASM. The only supported architecture is x86-64. The only supported environment is
