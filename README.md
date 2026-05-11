@@ -133,3 +133,16 @@ always requires linkage with the operating system's API to support exiting the p
 
 Note that the `main` entrypoint counts as part of libc as long as it follows the libc spec.
 
+
+## Building
+
+So far, this project can only be built on Windows platforms.
+
+Requirements:
+- mingw-w64 or similar; must ship with gcc/g++ at minimum
+- nasm for 64bit windows for assembling
+
+To build the project, run the build.bat script from the root of the repository.
+A `cpasm.exe` file will appear in the bin directory.
+
+
