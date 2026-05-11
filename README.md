@@ -14,7 +14,6 @@ The language's syntax looks alot like that of assembly. For instance, here's wha
 ```
 from "c" import puts;  // requires linking with libc
 
-
 section .data:  // data segment
 
 sym message:
