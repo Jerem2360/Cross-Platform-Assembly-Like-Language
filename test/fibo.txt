@@ -1,5 +1,7 @@
 from "c" import _printf;  // this automatically looks for libc on the system
 
+section .data:
+
 if %ARCH == Albert
 
     if %BITS == 64
@@ -38,9 +40,9 @@ sym output:
 sym string:
     data int.8 "Output is %i.";
 
+section .text:
 
-
-fn fibo2($input: int.32) -> int.32 {
+fn [callconv] fibo2($input: int.32) -> int.32 {
     $i: int.32;
     $tmp: int.32;
     $previous: int.32;
@@ -50,7 +52,7 @@ fn fibo2($input: int.32) -> int.32 {
     result <- 2;  // fibo(2) = 2
     if $input == 2 goto end;
     result <- 1;  // fibo(1) and fibo(0) are 1
-    goto end;
+    goto end;  // can be replaced with a 'return'
 
 body:
 
@@ -88,7 +90,7 @@ fn {
     $output <- 2;  // fibo(2) = 2
     if $input == 2 goto end;
     $output <- 1;  // fibo(1) and fibo(0) are 1
-    goto end;
+    goto end;  // could be replaced with 'return'
 
 body:
 
@@ -117,10 +119,10 @@ entry {
 
     call fibo;  // function call, uses global storage for in/out
     $fibo_res <- output[int.32];  // pick the input from the out global storage 
-    call _printf(string, $fibo_res);  // print it to the terminal
+    call [callconv] _printf(string, $fibo_res);  // print it to the terminal
 
     call fibo2(12) -> $fibo_res;  // function call, using parameters this time. result is placed in $fibo_res
-    call _printf(string, $fibo_res);  // print our result
+    call [callconv] _printf(string, $fibo_res);  // print our result
     exit;
 }
 

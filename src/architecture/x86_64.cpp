@@ -478,15 +478,19 @@ namespace cpasm::x86_64 {
 	/*
 	Serialize a float constant into an int constant of the appropriate size.
 	*/
-	static Operand _serialize_const_float(const Operand& src, uint8_t opsize) {
+	static Operand _serialize_const_float(const Operand& src, OpFlags* flags) {
 		double val;
 		if (!src.as_const_float(&val))
 			return src;
-		if (opsize == 4)  // if we are supposed to intepret this float as 32-bit, it must be serialized into a 32-bit integer
+		if (flags->size == 4) { // if we are supposed to intepret this float as 32-bit, it must be serialized into a 32-bit integer
+			flags->float_st = static_cast<decltype(flags->float_st)>(flags->float_st & OpFlags::LEFT);
 			return Operand::from_const_int(std::bit_cast<unsigned int>(static_cast<float>(val)));
+		}
 
-		if (opsize == 8)  // for 64-bits, we need to serialize into a 64-bit integer
+		if (flags->size == 8) {  // for 64-bits, we need to serialize into a 64-bit integer
+			flags->float_st = static_cast<decltype(flags->float_st)>(flags->float_st & OpFlags::LEFT);
 			return Operand::from_const_int(std::bit_cast<size_t>(val));
+		}
 
 		return src;
 	}
@@ -590,15 +594,15 @@ namespace cpasm::x86_64 {
 		return _cpu_instruction2(out, SUB, { target, op }, "sub");
 	}
 
-	static bool _mul_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
-		Operand ser_op = _serialize_const_float(op, size);
+	static bool _mul_float(AssemblyWriter& out, const Operand& target, const Operand& op, OpFlags flags) {
+		Operand ser_op = _serialize_const_float(op, &flags);
 
-		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
+		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), flags.size);  // op must be memory or FP register
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed());  // target must be FP register
 
-		if (size == 4)
+		if (flags.size == 4)
 			return _cpu_instruction2(out, MULSS, { backed_target.get(), backed_op.get() }, "mul");
-		if (size == 8)
+		if (flags.size == 8)
 			return _cpu_instruction2(out, MULSD, { backed_target.get(), backed_op.get() }, "mul");
 
 		return false;
@@ -613,15 +617,15 @@ namespace cpasm::x86_64 {
 		return _cpu_instruction2(out, IMUL, { backed_target.get(), backed_op.get() }, "mul");
 	}
 
-	static bool _div_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
-		Operand ser_op = _serialize_const_float(op, size);
+	static bool _div_float(AssemblyWriter& out, const Operand& target, const Operand& op, OpFlags flags) {
+		Operand ser_op = _serialize_const_float(op, &flags);
 
-		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), size);  // op must be memory or FP register
+		auto backed_op = out.wrap_tmp(ser_op, true, false, TmpRegFlags::FP_backed(true, false), flags.size);  // op must be memory or FP register
 		auto backed_target = out.wrap_tmp(target, true, true, TmpRegFlags::FP_backed());  // target must be FP register
 
-		if (size == 4)
+		if (flags.size == 4)
 			return _cpu_instruction2(out, DIVSS, { backed_target.get(), backed_op.get() }, "div");
-		if (size == 8)
+		if (flags.size == 8)
 			return _cpu_instruction2(out, DIVSD, { backed_target.get(), backed_op.get() }, "div");
 		return false;
 	}
@@ -887,7 +891,7 @@ namespace cpasm::x86_64 {
 			return out.cpu_instruction(ADD, { Operand::from_register(RSP), Operand::from_const_int(cnt) }, "pop_amount");
 		}
 		PROP bool move(AssemblyWriter& out, const Operand& target, const Operand& src, OpFlags flags) {
-			Operand ser_src = _serialize_const_float(src, flags.size);
+			Operand ser_src = _serialize_const_float(src, &flags);
 			if (flags.memory_st == OpFlags::ALL)  // both operands are memory
 				return _mov_mem2mem(out, target, ser_src);
 
@@ -927,24 +931,24 @@ namespace cpasm::x86_64 {
 		PROP bool mul(AssemblyWriter& out, const Operand& target, const Operand& op, OpFlags flags) {
 			if (flags.memory_st == OpFlags::ALL) {  // x86 IMUL does not support two memory operands in one instruction
 				if (target.type().type == DataType::Type::FLOAT)  // for float multiplication with two memory operands, use mulss and mulsd
-					return _mul_float(out, target, op, flags.size);
+					return _mul_float(out, target, op, flags);
 			}
 
 			if (!flags.float_st)
 				return _mul_int(out, target, op, flags.size);
 
-			return _mul_float(out, target, op, flags.size);
+			return _mul_float(out, target, op, flags);
 		}
 		PROP bool div(AssemblyWriter& out, const Operand& target, const Operand& op, OpFlags flags) {
 			if (flags.memory_st == OpFlags::ALL) {
 				if (target.type().type == DataType::Type::FLOAT)  // for float division with two memory operands, use divss and divsd
-					return _div_float(out, target, op, flags.size);
+					return _div_float(out, target, op, flags);
 			}
 
 			if (!flags.float_st)  // float_st only tracks float registers, NOT memory locations of float type
 				return _div_int(out, target, op, flags.size, flags.signed_st & OpFlags::LEFT);
 
-			return _div_float(out, target, op, flags.size);
+			return _div_float(out, target, op, flags);
 		}
 		PROP bool inc(AssemblyWriter& out, const Operand& target, OpFlags flags) {
 			return _cpu_instruction2(out, INC, { target }, "inc");
@@ -986,7 +990,8 @@ namespace cpasm::x86_64 {
 			ptrdiff_t diff = op - Operator::GEQ;
 			if (diff < 0 || diff >= (ptrdiff_t)array_len(_signed_jmp_if_table))
 				return false;
-
+			
+			// TODO: Should signed comparison be used also when only one of the two operands is signed ?
 			CPUInstruction jmp_instr = flags.signed_st == OpFlags::ALL ? _signed_jmp_if_table[diff] : _unsigned_jmp_if_table[diff];
 
 			return _cpu_instruction2(out, jmp_instr, { target }, "jump_if");

@@ -151,8 +151,10 @@ namespace cpasm {
 	DataType SimpleOperand::type() const {
 		switch (this->_type) {
 		case TY_CONST_INT:
+			// TODO: should int literals have their own hidden integer type ?
+			// that would be useful to adapt the type of a literal to that of other operands
 			return {
-				DataType::UINT,
+				DataType::UINT,  
 				0
 			};
 		case TY_CONST_CHAR:

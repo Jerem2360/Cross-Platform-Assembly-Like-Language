@@ -170,7 +170,7 @@ namespace cpasm::NASM {
 			return true;
 		}
 		PROP bool const_float(std::ostream& out, double value) {
-			out << value;
+			out << value;  // TODO: seems like this write truncates the value of the double, fix that somehow
 			return true;
 		}
 		PROP bool const_char(std::ostream& out, char value) {

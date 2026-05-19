@@ -4,15 +4,9 @@ from "c" import puts _itoa _gcvt_s;
 section .bss:
 
 sym idata:
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
+    data int.8[32];
 sym fdata:
-    data int.64;
-    data int.64;
-    data int.64;
-    data int.64;
+    data int.8[32];
 
 
 section .text:
