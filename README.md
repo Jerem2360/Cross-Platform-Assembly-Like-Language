@@ -111,7 +111,7 @@ This is required because it dictates the entry point name. Without this flag, th
 Example:
 
 ```
-cpasm.exe main.cpa -asm NASM -arch x86_64 -env win64 -o main.asm
+cropall.exe main.cpa -asm NASM -arch x86_64 -env win64 -o main.asm
 ```
 
 The above command receives as input a `main.cpa` file and generates a `main.asm` file containing NASM syntax, built for Windows x86_64. 
@@ -143,6 +143,6 @@ Requirements:
 - nasm for 64bit windows for assembling
 
 To build the project, run the build.bat script from the root of the repository.
-A `cpasm.exe` file will appear in the bin directory.
+A `cropall.exe` file will appear in the bin directory.
 
 

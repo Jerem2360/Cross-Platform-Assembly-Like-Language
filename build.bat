@@ -44,5 +44,5 @@ call build_one.bat Wordizer parsing
 if "%ERRORLEVEL%" == "106" exit /B 1
 
 
-g++ -std=c++20 %ARGS% -o bin/cpasm.exe
+g++ -std=c++20 %ARGS% -o bin/cropall.exe
 
