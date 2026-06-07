@@ -198,6 +198,7 @@ namespace cpasm {
 		bool band(const Operand& target, const Operand& op);
 		bool bor(const Operand& target, const Operand& op);
 		bool mod(const Operand& target, const Operand& op);
+		bool syscall_instr(std::string_view name);
 
 		// environment-specific instructions
 		bool exit(const Code*, const Operand& code);

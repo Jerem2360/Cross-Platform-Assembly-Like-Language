@@ -498,6 +498,14 @@ namespace cpasm {
 			*this, target.resolve(), op.resolve(), _compute_flags(target, op)
 		);
 	}
+	bool AssemblyWriter::syscall_instr(std::string_view name) {
+		int code = CurrentImpl.syscall_number(name);
+		if (code < 0)
+			return false;
+		return optional_funcptr(this->_arch_funcs->syscall)(
+			*this, code
+		);
+	}
 	bool AssemblyWriter::exit(const Code* owner, const Operand& exitcode) {
 		//return _call_or_fail(
 		//	this->_env_funcs->exit_process,

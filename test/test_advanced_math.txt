@@ -1,12 +1,4 @@
-from "c" import puts _itoa _gcvt_s;
-
-
-section .bss:
-
-sym idata:
-    data int.8[32];
-sym fdata:
-    data int.8[32];
+from "lib" import print_float print_int;
 
 
 section .text:
@@ -20,9 +12,7 @@ entry {
     $vari /= 10;
     $vari *= 10;
 
-    call [callconv] _itoa($vari, idata, 10);
-
-    call [callconv] puts(idata);
+    call [callconv] print_int($vari);
 
     $varf <- 100.35;
     $varf /= 10.0;
@@ -30,8 +20,6 @@ entry {
 
     //#cvtss2sd $vard, $varf;
 
-    call [callconv] _gcvt_s(fdata, 32, $varf, 10);
-
-    call [callconv] puts(fdata);
+    call [callconv] print_float($varf);
 }
 

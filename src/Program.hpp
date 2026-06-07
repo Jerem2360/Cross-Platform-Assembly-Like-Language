@@ -126,6 +126,7 @@ namespace cpasm {
 
 		bool gen_function_call(AssemblyWriter&, const Operand& target, const Operand& return_location, array_view<Operand> args, bool never_returns = false, std::string_view callconv = "default") const;
 		void set_func_attrs(FuncAttrProperties attr_props);
+		bool gen_syscall(AssemblyWriter&, std::string_view name, const Operand& return_location, array_view<Operand> args, bool never_returns = false) const;
 
 		Code();
 	};

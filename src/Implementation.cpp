@@ -18,6 +18,7 @@ namespace cpasm {
 		this->_mixed_regs = {};
 		this->_callconvs = {};
 		std::map<std::string_view, const CallingConvention*> _raw_callconvs = {};
+		std::map<std::string_view, const SyscallConvention*> _raw_syscallconvs = {};
 
 		auto parch = map_get<std::string_view, const ArchitectureStruct*>(Architectures, arch_name, nullptr);
 		if (parch) {
@@ -38,6 +39,10 @@ namespace cpasm {
 
 			for (auto& cconv : parch->calling_conventions) {
 				_raw_callconvs[cconv->name] = cconv;
+			}
+
+			for (auto& cconv : parch->syscall_conventions) {
+				_raw_syscallconvs[cconv->name] = cconv;
 			}
 
 			this->_instr_names = parch->instruction_names;
@@ -66,6 +71,13 @@ namespace cpasm {
 				if (!cc)
 					continue;
 				this->_callconvs[envname] = cc;
+			}
+			for (auto& syscallconv_name : penv->syscallconv_priority) {
+				auto scc = map_get<std::string_view, const SyscallConvention*>(_raw_syscallconvs, syscallconv_name, nullptr);
+				if (scc) {
+					this->_syscall_conv = scc;
+					break;
+				}
 			}
 			this->_env_funcs = &penv->funcs;
 			this->_entry_name = penv->entry_name;
@@ -141,6 +153,21 @@ namespace cpasm {
 
 		return conv_flags[offset];
 	}
+	RegConventionFlags Implementation::register_syscallconv(const CPURegister* reg) const {
+		if (!this->_syscall_conv)
+			return {false, false};
+
+		auto where = std::find(this->_all_regs.begin(), this->_all_regs.end(), reg->toplevel());
+		if (where == this->_all_regs.end())
+			return {false, false};
+
+		size_t offset = where - this->_all_regs.begin();
+
+		if (offset >= this->_syscall_conv->reg_convflags.size())
+			return {false, false};
+
+		return this->_syscall_conv->reg_convflags[offset];
+	}
 	void Implementation::call_prog_init(Program* program) const {
 		if (this->_env_funcs && this->_env_funcs->prog_init) this->_env_funcs->prog_init(program);
 	}
@@ -149,6 +176,19 @@ namespace cpasm {
 	}
 	std::string_view Implementation::entry_name() const {
 		return this->_entry_name;
+	}
+	int Implementation::syscall_number(std::string_view name) const {
+		if (!this->_syscall_conv)
+			return -1;
+
+		int code = map_get(this->_syscall_conv->call_numbers, name, -1);
+		if (code < 0)
+			return code;
+		
+		return code | this->_syscall_conv->call_number_mask;
+	}
+	const SyscallConvention* Implementation::syscall_convention() const {
+		return this->_syscall_conv;
 	}
 }
 

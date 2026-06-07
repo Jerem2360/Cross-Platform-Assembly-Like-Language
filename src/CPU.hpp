@@ -153,6 +153,18 @@ namespace cpasm {
 		uint8_t funcentry_stack_align;
 	};
 
+	struct SyscallConvention {
+		const CPURegister* return_reg;
+		const CPURegister* code_reg;
+		array_view<const CPURegister*> arg_registers;
+		array_view<RegConventionFlags> reg_convflags;
+		uint8_t shadow_space;
+		uint8_t stk_ptr_align;
+		std::string_view name;
+		std::map<std::string_view, int> call_numbers;
+		int call_number_mask;  // for mac
+	};
+
 	struct OpFlags {
 		enum _op_status : uint8_t {
 			NONE = 0,

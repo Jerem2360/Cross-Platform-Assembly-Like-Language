@@ -3,6 +3,7 @@
 #include <string_view>
 #include "x86_64.hpp"
 #include "../AsmWriter.hpp"
+#include "../Implementation.hpp"
 
 
 namespace cpasm::x86_64 {
@@ -248,6 +249,7 @@ namespace cpasm::x86_64 {
 	static constexpr CPUInstruction JBE = 54;
 	static constexpr CPUInstruction JA = 55;
 	static constexpr CPUInstruction JB = 56;
+	static constexpr CPUInstruction SYSCALL = 57;
 
 
 	/*
@@ -401,6 +403,46 @@ namespace cpasm::x86_64 {
 		PROP uint8_t stack_pointer_align = 16;
 		PROP std::string_view name = "systemv_x64";
 		PROP uint8_t funcentry_stack_align = 16;
+	};
+
+	struct Sysvx64VarargsCallconv : Sysvx64CallConv {
+		PROP std::string_view name = "varargs";  // TODO: find a better name ?
+		// TODO: Special case here: al needs to contain an upper bound on the number of xmm registers used as arguments
+	};
+
+	struct Sysvx64SyscallConv : SyscallConvImpl {
+		PROP const CPURegister* return_reg = RAX;
+		PROP const CPURegister* code_reg = RAX;
+		PROP const CPURegister* argument_regs[] = {
+			RDI,
+			RSI,
+			RDX,
+			R10,
+			R8,
+			R9,
+		};
+		PROP RegConventionFlags reg_saving_flags[] = {
+			RegConventionFlags::CALLEE_SAVED(),  // RAX
+			RegConventionFlags::CALLEE_SAVED(),  // RBX
+			RegConventionFlags::CALLER_SAVED(),  // RCX
+			RegConventionFlags::CALLEE_SAVED(),  // RDX
+			RegConventionFlags::CALLEE_SAVED(),  // R8
+			RegConventionFlags::CALLEE_SAVED(),  // R9
+			RegConventionFlags::CALLEE_SAVED(),  // R10
+			RegConventionFlags::CALLER_SAVED(),  // R11
+			RegConventionFlags::CALLEE_SAVED(),  // R12
+			RegConventionFlags::CALLEE_SAVED(),  // R13
+			RegConventionFlags::CALLEE_SAVED(),  // R14
+			RegConventionFlags::CALLEE_SAVED(),  // R15
+			RegConventionFlags::CALLEE_SAVED(),  // RSI
+			RegConventionFlags::CALLEE_SAVED(),  // RDI
+		};
+		PROP uint8_t stack_pointer_align = 16;
+		PROP std::string_view name = "systemv_x64";
+		PROP std::map<std::string_view, int> call_numbers = {
+			{"exit", 60},
+			{"exit_group", 231},
+		};
 	};
 
 	/*
@@ -854,10 +896,15 @@ namespace cpasm::x86_64 {
 			"JBE",
 			"JA",
 			"JB",
+			"SYSCALL",
 		};
 		PROP const CallingConvention* calling_conventions[] = {
 			build_callconv<Winx64CallConv>(),
 			build_callconv<Sysvx64CallConv>(),
+			build_callconv<Sysvx64VarargsCallconv>(),
+		};
+		PROP const SyscallConvention* syscall_conventions[] = {
+			build_syscallconv<Sysvx64SyscallConv>(),
 		};
 
 		PROP bool push(AssemblyWriter& out, const Operand& op, int* out_cnt) {
@@ -1002,8 +1049,14 @@ namespace cpasm::x86_64 {
 		PROP bool return_(AssemblyWriter& out) {
 			return _cpu_instruction2(out, RET, {}, "return");
 		}
-	};
+		PROP bool syscall(AssemblyWriter& out, int syscall_code) {
+			const CPURegister* code_reg = CurrentImpl.syscall_convention()->code_reg;
+			if (!out.move(Operand::from_register(code_reg), Operand::from_const_int(syscall_code)))
+				return false;
 
+			return out.cpu_instruction(SYSCALL, {});
+		}
+	};
 
 	extern const ArchitectureStruct Arch = build_arch<x86_64Impl>();
 }

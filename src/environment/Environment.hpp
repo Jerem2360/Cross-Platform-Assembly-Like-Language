@@ -17,6 +17,9 @@ namespace cpasm {
 		PROP std::string_view supported_callconvs[] = {
 			"",
 		};
+		PROP std::string_view syscallconv_priority[] = {
+			"",
+		};
 		PROP std::string_view entry_name = "";
 
 		PROP void prog_init(Program*) {}
@@ -37,6 +40,7 @@ namespace cpasm {
 
 	struct EnvironmentStruct {
 		array_view<std::string_view> supported_callconvs;
+		array_view<std::string_view> syscallconv_priority;
 		decltype(EnvironmentImpl::entry_name) entry_name;
 		EnvironmentFuncs funcs;
 	};
@@ -46,6 +50,7 @@ namespace cpasm {
 	EnvironmentStruct build_env() {
 		return {
 			.supported_callconvs = T::supported_callconvs,
+			.syscallconv_priority = T::syscallconv_priority,
 			.entry_name = T::entry_name,
 			.funcs = EnvironmentFuncs{
 				.prog_init = &T::prog_init,

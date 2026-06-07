@@ -1,4 +1,6 @@
 #pragma once
+#include <map>
+
 #include "../helpers.hpp"
 #include "../CPU.hpp"
 #include "../Operand.hpp"
@@ -72,6 +74,39 @@ namespace cpasm {
 		return &res;
 	}
 
+	class SyscallConvImpl {
+		PROP const CPURegister* return_reg = nullptr;
+		PROP const CPURegister* code_reg = nullptr;
+		PROP const CPURegister* argument_regs[] = {
+			nullptr,
+		};
+		PROP RegConventionFlags reg_saving_flags[] = {
+			{}
+		};
+		PROP uint8_t shadow_space = 0;
+		PROP uint8_t stack_pointer_align = 1;
+		PROP std::string_view name = "<unknown>";
+		PROP std::map<std::string_view, int> call_numbers = {};
+		PROP int call_number_mask = 0;
+	};
+
+	template<class T>
+		requires std::is_base_of_v<SyscallConvImpl, T>
+	inline const SyscallConvention* build_syscallconv() {
+		static SyscallConvention res = {
+			.return_reg = T::return_reg,
+			.code_reg = T::code_reg,
+			.arg_registers = T::argument_regs,
+			.reg_convflags = T::reg_saving_flags,
+			.shadow_space = T::shadow_space,
+			.stk_ptr_align = T::stack_pointer_align,
+			.name = T::name,
+			.call_numbers = T::call_numbers,
+			.call_number_mask = T::call_number_mask,
+		};
+		return &res;
+	}
+
 	struct ArchitectureImpl {
 		PROP uint8_t pointer_size = 0;
 		PROP const CPURegister* registers[] = {
@@ -81,6 +116,9 @@ namespace cpasm {
 			"",
 		};
 		PROP const CallingConvention* calling_conventions[] = {
+			nullptr,
+		};
+		PROP const SyscallConvention* syscall_conventions[] = {
 			nullptr,
 		};
 
@@ -103,6 +141,8 @@ namespace cpasm {
 		PROP bool jump_if(AssemblyWriter& out, const Operand& target, const Operand& lhs, const Operand& rhs, const Operator* op, OpFlags flags) { return false; }
 		PROP bool call(AssemblyWriter& out, const Operand& target) { return false; }
 		PROP bool return_(AssemblyWriter& out) { return false; }
+		// Maybe make syscall_code an Operand for flexibility ?
+		PROP bool syscall(AssemblyWriter& out, int syscall_code) { return false; }
 	};
 
 	struct ArchitectureFuncs {
@@ -125,6 +165,7 @@ namespace cpasm {
 		decltype(&ArchitectureImpl::jump_if) jump_if;
 		decltype(&ArchitectureImpl::call) call;
 		decltype(&ArchitectureImpl::return_) return_;
+		decltype(&ArchitectureImpl::syscall) syscall;
 	};
 
 	struct ArchitectureStruct {
@@ -135,6 +176,7 @@ namespace cpasm {
 		SAME_ARR(registers);
 		SAME_ARR(instruction_names);
 		SAME_ARR(calling_conventions);
+		SAME_ARR(syscall_conventions);
 		ArchitectureFuncs funcs;
 
 #undef SAME
@@ -148,6 +190,7 @@ namespace cpasm {
 			.registers = T::registers,
 			.instruction_names = T::instruction_names,
 			.calling_conventions = T::calling_conventions,
+			.linux_syscall_numbers = T::linux_syscall_numbers,
 			.funcs = ArchitectureFuncs{
 				.push = T::push,
 				.pop = T::pop,
@@ -168,6 +211,7 @@ namespace cpasm {
 				.jump_if = T::jump_if,
 				.call = T::call,
 				.return_ = T::return_,
+				.syscall = T::syscall,
 			}
 		};
 	}

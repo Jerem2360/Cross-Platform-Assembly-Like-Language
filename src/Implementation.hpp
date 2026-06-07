@@ -23,6 +23,7 @@ namespace cpasm {
 		std::vector<const CPURegister*> _mixed_regs;
 		std::map<std::string_view, std::string> _cmptime_vars;
 		std::map<std::string_view, const CallingConvention*> _callconvs;
+		const SyscallConvention* _syscall_conv;
 		array_view<std::string_view> _instr_names;
 		std::string_view _entry_name;
 		const AssemblerFuncs* _asm_funcs;
@@ -47,9 +48,12 @@ namespace cpasm {
 		const EnvironmentFuncs* env_functions() const;
 		std::string_view instruction_name(CPUInstruction instr) const;
 		RegConventionFlags register_callconv(const CPURegister* reg, const CallingConvention* callconv) const;
+		RegConventionFlags register_syscallconv(const CPURegister* reg) const;
 		void call_prog_init(Program* program) const;
 		void call_env_init(Code* owner) const;
 		std::string_view entry_name() const;
+		int syscall_number(std::string_view name) const;
+		const SyscallConvention* syscall_convention() const;
 	};
 
 	extern Implementation CurrentImpl;

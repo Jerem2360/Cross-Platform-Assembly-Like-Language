@@ -1,0 +1,50 @@
+if %ENV == win64
+
+from "c" import puts _itoa _gcvt_s;
+
+else 
+
+from "c" import printf;
+
+section .data:
+
+sym float_pattern:
+    data int.8 "%d\n\0";
+
+sym int_pattern:
+    data int.8 "%i\n\0";
+
+endif;
+
+section .bss:
+
+sym buffer:
+    data int.8[64];
+
+
+section .text:
+
+if %ENV == win64
+
+fn [callconv] print_int($val: int.32) export {
+    call [callconv] _itoa($val, buffer, 10);
+    call [callconv] puts(buffer);
+}
+
+fn [callconv] print_float($val: float.64) export {
+    call [callconv] _gcvt_s(buffer, 64, $val, 20);
+    call [callconv] puts(buffer);
+}
+
+else
+
+fn [callconv] print_int($val: int.32) export {
+    call [varargs] printf(int_pattern, $val);
+}
+
+fn [callconv] print_float($val: float.64) export {
+    call [varargs] printf(float_pattern, $val);
+}
+
+endif;
+

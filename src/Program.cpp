@@ -344,6 +344,87 @@ namespace cpasm {
 		return _instr_check_table[get_underlying(this->type)](this, program, owner, this->lineno);
 	}
 
+	static bool _syscall(
+		AssemblyWriter& out,
+		std::string_view name,
+		const Operand& return_location,
+		array_view<Operand> args,
+		const Code* owner,
+		const SyscallConvention* syscallconv,
+		bool never_returns = false
+	) {
+		if (!syscallconv)
+			return false;
+		if (args.size() > syscallconv->arg_registers.size())
+			return false;  // cannot pass arguments on the stack for syscalls
+		if (return_location.type().type == DataType::Type::FLOAT)
+			return false;  // return location of syscall cannot be a float
+
+		Operand retloc_resolved = return_location.resolve();
+		
+		std::vector<Operand> pushed_locals;
+
+		// push boxes
+		for (auto& [name, box] : owner->boxes) {
+			if (CurrentImpl.register_syscallconv(box.reg).caller_saved()) {
+
+				if (!retloc_resolved.is_related_register(box.reg)) {  // don't push the box if it's the return location
+					auto& op = pushed_locals.emplace_back(Operand::from_register(box.reg));
+					out.push(op);
+				}
+
+			}
+		}
+
+		// align stack for call
+		size_t align_missing = remaining_for_align(out.stack_offset(), syscallconv->stk_ptr_align);
+		out.push_amount(align_missing);
+
+		// shadow space
+		out.push_amount(syscallconv->shadow_space);
+
+		// arguments
+		for (size_t i = 0; i < args.size(); i++) {
+			if (args[i].type().type == DataType::Type::FLOAT)
+				return false;  // float args to syscalls are not allowed
+
+			auto arg_reg = syscallconv->arg_registers[i];
+			if (args[i].type().size)
+				arg_reg = arg_reg->smallest_to_fit(args[i].type().size);
+			if (!args[i].resolve().is_related_register(arg_reg)) {
+				out.move(Operand::from_register(arg_reg), args[i]);
+			}
+		}
+
+		// syscall instruction
+		if (!out.syscall_instr(name))
+			return false;
+
+		if (never_returns)
+			return true;
+
+		
+		// pop shadow space
+		out.pop_amount(syscallconv->shadow_space);
+		// pop extra stack space
+		out.pop_amount(align_missing);
+
+		// return location
+		if (!return_location.is_empty()) {
+			if (!retloc_resolved.is_related_register(syscallconv->return_reg))
+				out.move(return_location, Operand::from_register(syscallconv->return_reg));
+		}
+		
+		// pop back boxes
+		while (pushed_locals.size()) {
+			auto& var = vec_last(pushed_locals);
+			out.pop(var);  // comparison with return register is done in pre-call phase
+			pushed_locals.pop_back();
+		}
+
+		return true;
+	}
+
 	static bool _call_function(
 		AssemblyWriter& out,
 		const Operand& target,
@@ -646,6 +727,12 @@ namespace cpasm {
 		
 		return _call_function(
 			out, target, return_location, args, this, nullptr, callconv, never_returns
+		);
+	}
+
+	bool Code::gen_syscall(AssemblyWriter& out, std::string_view name, const Operand& return_location, array_view<Operand> args, bool never_returns) const {
+		return _syscall(
+			out, name, return_location, args, this, CurrentImpl.syscall_convention(), never_returns
 		);
 	}
 

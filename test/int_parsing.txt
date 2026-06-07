@@ -1,7 +1,8 @@
-from "c" import puts _itoa _gcvt_s;
+from "lib" import print_int print_float;
 
 
 section .data:
+
 
 sym integers:
     data int.32 0b1001;
@@ -16,27 +17,11 @@ sym floats:
     data float.64 12345.6789;
     data float.64 0x2468.ac;
 
-
-section .bss:
-
-sym buffer:
-    data int.8[64];
-
 section .text:
 
 /*
 Idea: use "$var: type in @reg" to customize where a variable goes ?
 */
-
-fn [callconv] print_int($val: int.32) {
-    call [callconv] _itoa($val, buffer, 10);
-    call [callconv] puts(buffer);
-}
-
-fn [callconv] print_float($val: float.64) {
-    call [callconv] _gcvt_s(buffer, 64, $val, 20);
-    call [callconv] puts(buffer);
-}
 
 entry {
     $i: int.64;
@@ -47,7 +32,7 @@ entry {
 
 loop1:
     if $i >= 4 goto end1;
-    call print_int((integers + $i * 4)[int.32]);
+    call [callconv] print_int((integers + $i * 4)[int.32]);
 
     $i++;
     goto loop1;
@@ -57,7 +42,7 @@ end1:
 loop2:
     if $i >= 4 goto end2;
     $fval <- (floats + $i * 8)[float.64];
-    call print_float($fval);
+    call [callconv] print_float($fval);
 
     $i++;
     goto loop2;

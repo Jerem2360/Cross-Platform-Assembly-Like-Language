@@ -20,7 +20,6 @@ namespace cpasm::win64 {
 			prog->add_import("kernel32.lib", _k32_imports, 0);
 		}
 		PROP bool exit_process(AssemblyWriter& out, const Code* owner, const Operand& exitcode) {
-			const CPURegister* reg = out.current_callconv()->arg_registers[0];
 			return owner->gen_function_call(
 				out,
 				Operand::from_const_label("ExitProcess", nullptr, 0),
