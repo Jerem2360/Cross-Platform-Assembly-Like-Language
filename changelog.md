@@ -17,5 +17,6 @@ This file summarizes the user-visible changes brought by version 0.3.
 - create linux build scripts
 - finish systemv varargs callconv
 - run tests on WSL
+- global architecture refactor
 
 
