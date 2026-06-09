@@ -74,7 +74,7 @@ namespace cpasm {
 		return &res;
 	}
 
-	class SyscallConvImpl {
+	struct SyscallConvImpl {
 		PROP const CPURegister* return_reg = nullptr;
 		PROP const CPURegister* code_reg = nullptr;
 		PROP const CPURegister* argument_regs[] = {
@@ -190,7 +190,6 @@ namespace cpasm {
 			.registers = T::registers,
 			.instruction_names = T::instruction_names,
 			.calling_conventions = T::calling_conventions,
-			.linux_syscall_numbers = T::linux_syscall_numbers,
 			.funcs = ArchitectureFuncs{
 				.push = T::push,
 				.pop = T::pop,

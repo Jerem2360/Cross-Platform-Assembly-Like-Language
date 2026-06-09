@@ -36,6 +36,8 @@ call build_one.bat Environment environment
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat Win64 environment
 if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat Linux environment
+if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat CharGrouper parsing
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat Parser parsing

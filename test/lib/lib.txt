@@ -14,7 +14,7 @@ sym float_pattern:
 sym int_pattern:
     data int.8 "%i\n\0";
 
-endif;
+endif
 
 section .bss:
 
@@ -46,5 +46,5 @@ fn [callconv] print_float($val: float.64) export {
     call [varargs] printf(float_pattern, $val);
 }
 
-endif;
+endif
 
