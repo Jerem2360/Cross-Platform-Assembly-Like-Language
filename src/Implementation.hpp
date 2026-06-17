@@ -29,6 +29,7 @@ namespace cpasm {
 		const AssemblerFuncs* _asm_funcs;
 		const ArchitectureFuncs* _arch_funcs;
 		const EnvironmentFuncs* _env_funcs;
+		const CPURegister* _stack_ptr;
 
 	public:
 		Implementation();
@@ -54,6 +55,7 @@ namespace cpasm {
 		std::string_view entry_name() const;
 		int syscall_number(std::string_view name) const;
 		const SyscallConvention* syscall_convention() const;
+		const CPURegister* stack_pointer() const;
 	};
 
 	extern Implementation CurrentImpl;

@@ -20,6 +20,12 @@ namespace cpasm {
 
 	static inline void empty_writer(std::ostream& fs) { fs << "<invalid>"; }
 
+	enum class AddressingMode: uint8_t {
+		DEFAULT = 0,
+		ABSOLUTE,
+		RELATIVE,
+	};
+
 
 	struct CodeRef {
 		Program* prog;
@@ -63,6 +69,8 @@ namespace cpasm {
 		Result check(bool runtime, int lineno) const;
 
 		bool operator ==(const DataType& other) const;
+
+		static DataType pointer();
 	};
 
 	class SimpleOperand {
@@ -253,11 +261,12 @@ namespace cpasm {
 		SimpleOperand _scale;  // must be a constant
 		DataType _type;
 		int lineno = 1;
+		AddressingMode _mode;
 
 	public:
 		Operand(SimpleOperand simple);
 		Operand();
-		Operand(SimpleOperand base, DataType ty, SimpleOperand idx = {}, SimpleOperand scale = {}, int lineno = 1);
+		Operand(SimpleOperand base, DataType ty, SimpleOperand idx = {}, SimpleOperand scale = {}, int lineno = 1, AddressingMode mode = AddressingMode::DEFAULT);
 
 		bool is_simple() const;
 
@@ -288,6 +297,7 @@ namespace cpasm {
 		explicit operator bool() const;
 
 		DataType type() const;
+		AddressingMode mode() const;
 
 		Result check(bool runtime, const Program*, const Code* code) const;
 

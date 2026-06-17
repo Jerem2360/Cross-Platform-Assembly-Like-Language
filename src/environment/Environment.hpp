@@ -29,12 +29,15 @@ namespace cpasm {
 			return false;
 		}
 		PROP void env_init(Code* owner) {}
+		// TODO: find a better way of extending instructions
+		PROP std::string_view instr_extension(std::string_view instr_name, std::string_view arch_name, const std::vector<Operand>& operands, const Program* prog) { return ""; }
 	};
 
 	struct EnvironmentFuncs {
 		decltype(&EnvironmentImpl::prog_init) prog_init;
 		decltype(&EnvironmentImpl::exit_process) exit_process;
 		decltype(&EnvironmentImpl::env_init) env_init;
+		decltype(&EnvironmentImpl::instr_extension) instr_extension;
 	};
 
 
@@ -56,6 +59,7 @@ namespace cpasm {
 				.prog_init = &T::prog_init,
 				.exit_process = &T::exit_process,
 				.env_init = &T::env_init,
+				.instr_extension = &T::instr_extension,
 			},
 		};
 	}

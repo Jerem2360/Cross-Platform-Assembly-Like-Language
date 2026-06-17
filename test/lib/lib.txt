@@ -9,7 +9,7 @@ from "c" import printf;
 section .data:
 
 sym float_pattern:
-    data int.8 "%d\n\0";
+    data int.8 "%f\n\0";
 
 sym int_pattern:
     data int.8 "%i\n\0";

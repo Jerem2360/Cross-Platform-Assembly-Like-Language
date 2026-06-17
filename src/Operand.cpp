@@ -57,6 +57,10 @@ namespace cpasm {
 		return (this->type == other.type) && (this->size == other.size);
 	}
 
+	DataType DataType::pointer() {
+		return { Type::PTR, CurrentImpl.pointer_size() };
+	}
+
 	SimpleOperand::SimpleOperand(size_t val, _Type ty, int lineno) :
 		_integer(val), _type(ty), _owner(nullptr), lineno(lineno)
 	{
@@ -363,8 +367,8 @@ namespace cpasm {
 		_base(), _index(), _scale(), _type()
 	{
 	}
-	Operand::Operand(SimpleOperand base, DataType ty, SimpleOperand idx, SimpleOperand scale, int lineno) :
-		_base(base), _type(ty), _index(idx), _scale(scale), lineno(lineno)
+	Operand::Operand(SimpleOperand base, DataType ty, SimpleOperand idx, SimpleOperand scale, int lineno, AddressingMode mode) :
+		_base(base), _type(ty), _index(idx), _scale(scale), lineno(lineno), _mode(mode)
 	{
 	}
 	bool Operand::is_simple() const {
@@ -476,6 +480,9 @@ namespace cpasm {
 			return this->_base.type();
 		return this->_type;
 	}
+	AddressingMode Operand::mode() const {
+		return this->_mode;
+	}
 
 	static constexpr size_t _pow2(uint8_t n) {
 		size_t val = 1;
@@ -569,9 +576,12 @@ namespace cpasm {
 		const SimpleOperand index = this->_index;
 		const SimpleOperand scale = this->_scale;
 		uint8_t sz = this->_type.size;
+		AddressingMode mode = this->_mode;
+
+		std::cout << "Addressing mode " << (int)mode << ".\n";
 
 		return [=](std::ostream&) {
-			writer->deref(base, index, scale, sz);
+			writer->deref(base, index, scale, sz, mode);
 		};
 	}
 
@@ -607,7 +617,8 @@ namespace cpasm {
 			this->_type,
 			this->_index.resolve(),
 			this->_scale.resolve(),
-			this->lineno
+			this->lineno,
+			this->_mode
 		);
 	}
 	Operand Operand::toplevel_register() const {

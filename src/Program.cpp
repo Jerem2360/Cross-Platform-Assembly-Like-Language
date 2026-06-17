@@ -1,4 +1,5 @@
 #include "Program.hpp"
+#include "FuncCall.hpp"
 #include <iostream>
 
 
@@ -353,12 +354,16 @@ namespace cpasm {
 		const SyscallConvention* syscallconv,
 		bool never_returns = false
 	) {
+		//std::cout << "entered syscall " << name << ".\n";
 		if (!syscallconv)
 			return false;
+		//std::cout << "syscallconv is valid\n";
 		if (args.size() > syscallconv->arg_registers.size())
 			return false;  // cannot pass arguments on the stack for syscalls
+		//std::cout << "arg count is below limit\n";
 		if (return_location.type().type == DataType::Type::FLOAT)
 			return false;  // return location of syscall cannot be a float
+		//std::cout << "return location is not a float\n";
 
 		Operand retloc_resolved = return_location.resolve();
 		
@@ -384,6 +389,11 @@ namespace cpasm {
 		out.push_amount(syscallconv->shadow_space);
 
 		// arguments
+		/*
+		FAILING POINT - NOTE: If the source of an argument happens to already have been overwritten by assigning another argument,
+		the callee will receive unexpected argument values. One solution to this would be to detect such a situation
+		and use the copy that was pushed to the stack earlier as a source instead.
+		*/
 		for (size_t i = 0; i < args.size(); i++) {
 			if (args[i].type().type == DataType::Type::FLOAT)
 				return false;  // float args to syscalls are not allowed
@@ -399,9 +409,11 @@ namespace cpasm {
 		// syscall instruction
 		if (!out.syscall_instr(name))
 			return false;
+		//std::cout << "syscall_instr succeeded\n";
 
 		if (never_returns)
 			return true;
+		//std::cout << "this syscall is meant to return at some point\n";
 
 		
 		// pop shadow space
@@ -435,7 +447,30 @@ namespace cpasm {
 		const CallingConvention* callconv,
 		bool never_returns = false
 	) {
-		Operand retloc_resolved = return_location.resolve();
+		FunctionCaller funccaller(out, callconv, owner);
+		funccaller.args(args);
+		funccaller.return_location(return_location);
+		if (never_returns)
+			funccaller.noreturn();
+
+		funccaller.push_locals();
+		funccaller.push_shadow();
+		funccaller.pass_reg_args();
+		funccaller.pass_stack_args();
+		funccaller.align_stack();
+
+		out.comment("    { CALL }");
+		out.call(target);
+
+		funccaller.unalign_stack();
+		funccaller.pop_stk_args();
+		funccaller.pop_shadow();
+		funccaller.fetch_result();
+		funccaller.pop_locals();
+
+		return true;
+
+		/*Operand retloc_resolved = return_location.resolve();
 
 		//auto callconv = CurrentImpl.dflt_calling_convention();
 
@@ -481,6 +516,11 @@ namespace cpasm {
 			int limit = (int)min(args.size(), callconv->arg_registers.size());
 			out.comment("    { WRITE REG ARGS }");
 			// set up register parameters
+			*
+			FAILING POINT - NOTE: If the source of an argument happens to already have been overwritten by assigning another argument,
+			the callee will receive unexpected argument values. One solution to this would be to detect such a situation
+			and use the copy that was pushed to the stack earlier as a source instead.
+			*
 			for (int i = 0; i < limit; i++) {
 				// for register params, move the arg into the correct register
 
@@ -569,7 +609,7 @@ namespace cpasm {
 			}
 		}
 
-		return true;
+		return true;*/
 	}
 
 	bool Instruction::generate(AssemblyWriter& out, std::string_view epilog_name, const Code* owner, const Program* prog) const {
@@ -994,6 +1034,8 @@ namespace cpasm {
 	}
 
 	bool Program::generate(AssemblyWriter& out) const {
+		out.set_prog(this);
+
 		// TODO: make this a little more modular
 		out.set_bitness(CurrentImpl.pointer_size() * 8);
 		if (CurrentImpl.pointer_size() == 8)
@@ -1198,6 +1240,16 @@ namespace cpasm {
 			if (func.name == name) {
 				if (out) *out = &func;
 				return true;
+			}
+		}
+		return false;
+	}
+
+	bool Program::imports(std::string_view name) const {
+		for (auto& import : this->_imports) {
+			for (auto& sym : import.symbols) {
+				if (sym == name)
+					return true;
 			}
 		}
 		return false;

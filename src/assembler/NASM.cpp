@@ -108,7 +108,7 @@ namespace cpasm::NASM {
 
 
 	struct NasmImpl : AssemblerImpl {
-		PROP bool cpu_instruction(std::ostream& out, std::string_view instr_name, std::vector<writer_t> operands, std::string_view comment) {
+		PROP bool cpu_instruction(std::ostream& out, std::string_view instr_name, std::vector<writer_t> operands, std::string_view extension, std::string_view comment) {
 			out << "    " << instr_name << ' ';
 			bool first = true;
 			for (auto& writer : operands) {
@@ -117,6 +117,8 @@ namespace cpasm::NASM {
 				first = false;
 				writer(out);
 			}
+			if (extension.size())
+				out << ' ' << extension;
 			if (comment.size())
 				out << "; " << comment;
 
@@ -195,8 +197,18 @@ namespace cpasm::NASM {
 
 			return true;
 		}
-		PROP bool deref(std::ostream& out, writer_t base, writer_t index, writer_t scale, uint8_t size) {
+		PROP bool deref(std::ostream& out, writer_t base, writer_t index, writer_t scale, uint8_t size, AddressingMode mode) {
 			out << _deref_sizes[size] << " [";
+			switch (mode) {
+			case AddressingMode::ABSOLUTE:
+				out << "abs ";
+				break;
+			case AddressingMode::RELATIVE:
+				out << "rel ";
+				break;
+			default:
+				break;
+			}
 			base(out);
 			if (index) {
 				out << " + ";

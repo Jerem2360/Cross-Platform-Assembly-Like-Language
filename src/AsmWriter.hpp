@@ -134,6 +134,7 @@ namespace cpasm {
 
 	class AssemblyWriter {
 		std::ostream& _output;
+		const Program* _prog = nullptr;
 		const AssemblerFuncs* _asm_funcs;
 		const ArchitectureFuncs* _arch_funcs;
 		const EnvironmentFuncs* _env_funcs;
@@ -145,6 +146,7 @@ namespace cpasm {
 
 	public:
 		AssemblyWriter(std::ostream& out);
+		void set_prog(const Program* prog);
 		void enter_code_block(const CallingConvention* callconv);
 		TmpRegWrapper wrap_tmp(const Operand& src, bool push, bool pull, TmpRegFlags accept, uint8_t size = 0);
 		TmpRegWrapper wrap_given_reg(const Operand& src, const CPURegister* back, bool push, bool pull);
@@ -171,7 +173,7 @@ namespace cpasm {
 		bool const_float(double value) const;
 		bool const_char(char value) const;
 		bool const_str(std::string_view value) const;
-		bool deref(const SimpleOperand& base, const SimpleOperand& index, const SimpleOperand& scale, uint8_t size) const;
+		bool deref(const SimpleOperand& base, const SimpleOperand& index, const SimpleOperand& scale, uint8_t size, AddressingMode mode) const;
 		bool register_(const CPURegister* reg) const;
 		bool comment(std::string_view text) const;
 		std::string random_identifier(std::string_view base = "") const;

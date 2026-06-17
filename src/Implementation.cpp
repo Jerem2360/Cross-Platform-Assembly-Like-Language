@@ -9,7 +9,17 @@ namespace cpasm {
 	Implementation CurrentImpl;
 
 	Implementation::Implementation() :
-		_ptr_sz(0), _all_regs(), _integer_regs(), _float_regs(), _mixed_regs(), _cmptime_vars(), _asm_funcs(), _arch_funcs(), _instr_names(), _env_funcs()
+		_ptr_sz(0), 
+		_all_regs(), 
+		_integer_regs(), 
+		_float_regs(), 
+		_mixed_regs(), 
+		_cmptime_vars(), 
+		_asm_funcs(), 
+		_arch_funcs(), 
+		_instr_names(), 
+		_env_funcs(), 
+		_stack_ptr(nullptr)
 	{ }
 
 	void Implementation::init(std::string_view arch_name, std::string_view assembler, std::string_view environment) {
@@ -43,10 +53,12 @@ namespace cpasm {
 
 			for (auto& cconv : parch->syscall_conventions) {
 				_raw_syscallconvs[cconv->name] = cconv;
+				//std::cout << "Adding syscallconv " << cconv->name << ".\n";
 			}
 
 			this->_instr_names = parch->instruction_names;
 			this->_arch_funcs = &parch->funcs;
+			this->_stack_ptr = parch->stack_pointer;
 		}
 		else {
 			this->_all_regs = {};
@@ -189,6 +201,9 @@ namespace cpasm {
 	}
 	const SyscallConvention* Implementation::syscall_convention() const {
 		return this->_syscall_conv;
+	}
+	const CPURegister* Implementation::stack_pointer() const {
+		return this->_stack_ptr;
 	}
 }
 

@@ -11,7 +11,7 @@
 
 namespace cpasm {
 	struct AssemblerImpl {
-		PROP bool cpu_instruction(std::ostream& out, std::string_view instr_name, std::vector<writer_t> operands, std::string_view comment) {
+		PROP bool cpu_instruction(std::ostream& out, std::string_view instr_name, std::vector<writer_t> operands, std::string_view extension, std::string_view comment) {
 			return false;
 		}
 		PROP bool define_bytes(std::ostream& out, uint8_t size, writer_t value) {
@@ -56,7 +56,7 @@ namespace cpasm {
 		PROP bool const_str(std::ostream& out, std::string_view value) {
 			return false;
 		}
-		PROP bool deref(std::ostream& out, writer_t base, writer_t index, writer_t scale, uint8_t size) {
+		PROP bool deref(std::ostream& out, writer_t base, writer_t index, writer_t scale, uint8_t size, AddressingMode mode) {
 			return false;
 		}
 		PROP bool register_(std::ostream& out, const CPURegister* reg) {

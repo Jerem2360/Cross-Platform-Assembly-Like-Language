@@ -250,6 +250,7 @@ namespace cpasm::x86_64 {
 	static constexpr CPUInstruction JA = 55;
 	static constexpr CPUInstruction JB = 56;
 	static constexpr CPUInstruction SYSCALL = 57;
+	static constexpr CPUInstruction LEA = 58;
 
 
 	/*
@@ -328,6 +329,7 @@ namespace cpasm::x86_64 {
 		PROP uint8_t stack_pointer_align = 16;
 		PROP std::string_view name = "win_x64";
 		PROP uint8_t funcentry_stack_align = 8;
+		PROP CallArgsMethod args_method = CallArgsMethod::MAPPED;
 	};
 
 	struct Sysvx64TmpRules : TempRulesImpl {
@@ -345,6 +347,15 @@ namespace cpasm::x86_64 {
 
 
 	struct Sysvx64CallConv : CallConvImpl {
+		/*
+		FAILING POINT - Argument registers: linux requires that the nth float argument be in XMMn, as opposed to windows, which requires the
+		nth argument to be in XMMn if it is a float.
+		example: (int, float, float, int)
+		- systemv: (RDI, XMM0, XMM1, RSI)
+		- win64: (RCX, XMM1, XMM2, R9)
+
+		Also linux requires the number of args to be put in AL for variadic functions.
+		*/
 		PROP const CPURegister* return_reg = RAX;
 		PROP const CPURegister* float_return_reg = XMM0;
 		PROP const CPURegister* argument_regs[] = {
@@ -403,11 +414,13 @@ namespace cpasm::x86_64 {
 		PROP uint8_t stack_pointer_align = 16;
 		PROP std::string_view name = "systemv_x64";
 		PROP uint8_t funcentry_stack_align = 16;
+		PROP CallArgsMethod args_method = CallArgsMethod::NEXT_AVAILABLE;
 	};
 
 	struct Sysvx64VarargsCallconv : Sysvx64CallConv {
 		PROP std::string_view name = "varargs";  // TODO: find a better name ?
 		// TODO: Special case here: al needs to contain an upper bound on the number of xmm registers used as arguments
+		PROP const CPURegister* argcount_reg = AL;
 	};
 
 	struct Sysvx64SyscallConv : SyscallConvImpl {
@@ -602,6 +615,14 @@ namespace cpasm::x86_64 {
 			return _mov_float2float(out, target, backed_src.get(), flags);
 
 		return _mov_int2float(out, target, backed_src.get(), flags);
+	}
+
+	static bool _mov_label2reg(AssemblyWriter& out, const Operand& target, const SimpleOperand& src, OpFlags flags) {
+		std::cout << "move label to reg\n";
+		return out.cpu_instruction(LEA, { 
+			target, 
+			Operand(src, DataType(DataType::INT, CurrentImpl.pointer_size()), {}, {}, 1, AddressingMode::RELATIVE) 
+		});
 	}
 
 	static bool _add_float(AssemblyWriter& out, const Operand& target, const Operand& op, uint8_t size) {
@@ -897,6 +918,7 @@ namespace cpasm::x86_64 {
 			"JA",
 			"JB",
 			"SYSCALL",
+			"LEA",
 		};
 		PROP const CallingConvention* calling_conventions[] = {
 			build_callconv<Winx64CallConv>(),
@@ -906,6 +928,7 @@ namespace cpasm::x86_64 {
 		PROP const SyscallConvention* syscall_conventions[] = {
 			build_syscallconv<Sysvx64SyscallConv>(),
 		};
+		PROP const CPURegister* stack_pointer = RSP;
 
 		PROP bool push(AssemblyWriter& out, const Operand& op, int* out_cnt) {
 			const CPURegister* reg;
@@ -939,6 +962,14 @@ namespace cpasm::x86_64 {
 		}
 		PROP bool move(AssemblyWriter& out, const Operand& target, const Operand& src, OpFlags flags) {
 			Operand ser_src = _serialize_const_float(src, &flags);
+
+			std::string_view label_name;
+			if (target.as_register(nullptr) && src.as_const_label(&label_name)) {
+				// on linux, PIC requires "lea target, [rel src]" to move a global symbol into a register, which also works on windows
+				SimpleOperand s_src = SimpleOperand::from_const_label(label_name, nullptr, 1);
+				return _mov_label2reg(out, target, s_src, flags);
+			}
+
 			if (flags.memory_st == OpFlags::ALL)  // both operands are memory
 				return _mov_mem2mem(out, target, ser_src);
 

@@ -223,6 +223,7 @@ namespace cpasm {
 
 		bool symbol_exists(std::string_view name) const;
 		bool get_function(std::string_view name, const Function** out) const;
+		bool imports(std::string_view name) const;
 
 		void post_decode();
 		Result check() const;

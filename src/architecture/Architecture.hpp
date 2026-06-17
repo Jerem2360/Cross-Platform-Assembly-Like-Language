@@ -53,6 +53,8 @@ namespace cpasm {
 		PROP uint8_t stack_pointer_align = 1;
 		PROP std::string_view name = "<unknown>";
 		PROP uint8_t funcentry_stack_align = 1;
+		PROP const CPURegister* argcount_reg = nullptr;
+		PROP CallArgsMethod args_method = CallArgsMethod::NONE;
 	};
 
 	template<class T>
@@ -70,6 +72,8 @@ namespace cpasm {
 			.stk_ptr_align = T::stack_pointer_align,
 			.name = T::name,
 			.funcentry_stack_align = T::funcentry_stack_align,
+			.argcount_reg = T::argcount_reg,
+			.args_method = T::args_method,
 		};
 		return &res;
 	}
@@ -121,6 +125,7 @@ namespace cpasm {
 		PROP const SyscallConvention* syscall_conventions[] = {
 			nullptr,
 		};
+		PROP const CPURegister* stack_pointer = nullptr;
 
 		PROP bool push(AssemblyWriter& out, const Operand& op, int* out_cnt) { return false; }
 		PROP bool pop(AssemblyWriter& out, const Operand& target, int* out_cnt) { return false; }
@@ -177,9 +182,11 @@ namespace cpasm {
 		SAME_ARR(instruction_names);
 		SAME_ARR(calling_conventions);
 		SAME_ARR(syscall_conventions);
+		SAME(stack_pointer);
 		ArchitectureFuncs funcs;
 
 #undef SAME
+#undef SAME_ARR
 	};
 
 	template<class T>
@@ -190,6 +197,8 @@ namespace cpasm {
 			.registers = T::registers,
 			.instruction_names = T::instruction_names,
 			.calling_conventions = T::calling_conventions,
+			.syscall_conventions = T::syscall_conventions,
+			.stack_pointer = T::stack_pointer,
 			.funcs = ArchitectureFuncs{
 				.push = T::push,
 				.pop = T::pop,

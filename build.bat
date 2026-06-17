@@ -16,6 +16,8 @@ call build_one.bat Operator
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat Program
 if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat FuncCall
+if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat RegisterOccupation
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat StackTrace

@@ -139,6 +139,18 @@ namespace cpasm {
 		array_view<const CPURegister*> fp_tmp_registers;
 	};
 
+	/*
+	The way register arguments are passed to called functions.
+	NONE: unspecified, this value is considered invalid.
+	MAPPED: Argument n goes into the nth register of its type
+	NEXT_AVAILABLE: An argument goes into the next available register of its type
+	*/
+	enum class CallArgsMethod : uint8_t {
+		NONE = 0,
+		MAPPED,
+		NEXT_AVAILABLE,
+	};
+
 	struct CallingConvention {
 		const CPURegister* return_reg;
 		const CPURegister* fp_return_reg;
@@ -151,6 +163,8 @@ namespace cpasm {
 		uint8_t stk_ptr_align;
 		std::string_view name;
 		uint8_t funcentry_stack_align;
+		const CPURegister* argcount_reg;
+		CallArgsMethod args_method;
 	};
 
 	struct SyscallConvention {

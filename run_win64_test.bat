@@ -1,5 +1,5 @@
 @echo off
-:: run_test.bat <test_name>
+:: run_win64_test.bat <test_name>
 echo generating test/%1/%1-win64.asm...
 bin\cropall.exe test/%1/%1.txt -o test/%1/%1-win64.asm -asm NASM -arch x86_64 -env win64
 echo generating test/lib/lib-win64.asm...

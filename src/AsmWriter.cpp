@@ -32,6 +32,9 @@ namespace cpasm {
 		_stack_offset(0),
 		_callconv(nullptr)
 	{ }
+	void AssemblyWriter::set_prog(const Program* prog) {
+		this->_prog = prog;
+	}
 	void AssemblyWriter::enter_code_block(const CallingConvention* callconv) {
 		if (!callconv)
 			callconv = CurrentImpl.dflt_calling_convention();
@@ -132,7 +135,11 @@ namespace cpasm {
 			op_writers.push_back(op.resolve().writer(this));
 		}
 
-		return this->_asm_funcs->cpu_instruction(this->_output, name, std::move(op_writers), comment);
+		std::string_view arch_name = CurrentImpl.cmptime_var("ARCH");
+
+		std::string_view extension = this->_env_funcs->instr_extension(name, arch_name, operands, this->_prog);
+
+		return this->_asm_funcs->cpu_instruction(this->_output, name, std::move(op_writers), extension, comment);
 	}
 	bool AssemblyWriter::define_bytes(uint8_t size, const SimpleOperand& value) const {
 		if (!this->_asm_funcs->define_bytes)
@@ -205,7 +212,7 @@ namespace cpasm {
 		return this->_asm_funcs->const_str(this->_output, value);
 	}
 
-	bool AssemblyWriter::deref(const SimpleOperand& base, const SimpleOperand& index, const SimpleOperand& scale, uint8_t size) const {
+	bool AssemblyWriter::deref(const SimpleOperand& base, const SimpleOperand& index, const SimpleOperand& scale, uint8_t size, AddressingMode mode) const {
 		if (!this->_asm_funcs->deref)
 			return false;
 		return this->_asm_funcs->deref(
@@ -213,7 +220,8 @@ namespace cpasm {
 			base.writer(this), 
 			index ? index.writer(this) : writer_t{},
 			scale ? scale.writer(this) : writer_t{},
-			size
+			size,
+			mode
 		);
 	}
 	bool AssemblyWriter::register_(const CPURegister* reg) const {

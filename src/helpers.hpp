@@ -288,6 +288,14 @@ namespace cpasm {
 		return false;
 	}
 
+	template<class T>
+	inline void vec_push_times(std::vector<T>& vec, T value, size_t count) {
+		vec.reserve(count);
+		for (size_t i = 0; i < count; i++) {
+			vec.push_back(value);
+		}
+	}
+
 	template<class... Ts>
 	struct overloaded : Ts... {
 		using Ts::operator()...;
