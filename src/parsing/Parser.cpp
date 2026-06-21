@@ -46,7 +46,7 @@ namespace cpasm {
 		if (!this->remaining())
 			return false;
 		bool res = false;
-		while ((*this)[0].type == CharGroupType::SPACE) {
+		while (this->remaining() && ((*this)[0].type == CharGroupType::SPACE)) {
 			this->consume();
 			res = true;
 		}
@@ -56,7 +56,7 @@ namespace cpasm {
 		if (!this->remaining())
 			return false;
 		bool res = false;
-		while ((*this)[0].type == CharGroupType::NEW_LINE) {
+		while (this->remaining() && ((*this)[0].type == CharGroupType::NEW_LINE)) {
 			this->consume();
 			res = true;
 		}
@@ -66,7 +66,7 @@ namespace cpasm {
 		if (!this->remaining())
 			return false;
 		bool res = false;
-		while (this->skip_spaces() || this->skip_newlines()) {
+		while (this->remaining() && (this->skip_spaces() || this->skip_newlines())) {
 			res = true;
 		};
 		return res;

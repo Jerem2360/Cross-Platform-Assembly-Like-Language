@@ -1,4 +1,5 @@
 bin/*.exe
+bin/*.elf
 bin/obj/*.obj
 bin/obj/*.o
 test/**/*.exe
