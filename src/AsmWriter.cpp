@@ -360,7 +360,7 @@ namespace cpasm {
 	}
 	bool AssemblyWriter::pop_amount(size_t cnt, bool nested) {
 		if (!nested)
-			this->_stack_offset += (int)cnt;
+			this->_stack_offset -= (int)cnt;
 		if (!cnt)
 			return true;
 		//return _call_or_fail(

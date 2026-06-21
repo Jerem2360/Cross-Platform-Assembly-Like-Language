@@ -413,13 +413,12 @@ namespace cpasm::x86_64 {
 		};
 		PROP uint8_t stack_pointer_align = 16;
 		PROP std::string_view name = "systemv_x64";
-		PROP uint8_t funcentry_stack_align = 16;
+		PROP uint8_t funcentry_stack_align = 8;
 		PROP CallArgsMethod args_method = CallArgsMethod::NEXT_AVAILABLE;
 	};
 
 	struct Sysvx64VarargsCallconv : Sysvx64CallConv {
 		PROP std::string_view name = "varargs";  // TODO: find a better name ?
-		// TODO: Special case here: al needs to contain an upper bound on the number of xmm registers used as arguments
 		PROP const CPURegister* argcount_reg = AL;
 	};
 
