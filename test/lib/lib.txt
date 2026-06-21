@@ -2,6 +2,11 @@ if %ENV == win64
 
 from "c" import puts _itoa _gcvt_s;
 
+section .bss:
+
+sym buffer:
+    data int.8[64];
+
 else 
 
 from "c" import printf;
@@ -15,11 +20,6 @@ sym int_pattern:
     data int.8 "%i\n\0";
 
 endif
-
-section .bss:
-
-sym buffer:
-    data int.8[64];
 
 
 section .text:
