@@ -14,6 +14,7 @@ This file summarizes the user-visible changes brought by version 0.3.
 - created linux build scripts
 - finished systemv varargs callconv
 - ran tests on WSL & Windows
+- [REFACTOR] added "0d" and "\d" prefix/escape sequence for base 10 numbers
 
 
 # TODO list
