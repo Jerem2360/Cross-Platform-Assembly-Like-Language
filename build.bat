@@ -4,6 +4,12 @@ mkdir bin\obj
 
 set ARGS=
 
+call build_one.bat tokenizer tokenizer
+if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat token_base tokenizer
+if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat number_token tokenizer
+if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat rules wordizer
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat wordizer wordizer

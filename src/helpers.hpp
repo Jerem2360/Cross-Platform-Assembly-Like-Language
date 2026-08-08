@@ -262,5 +262,31 @@ namespace cpasm {
 
     template<class T>
     using forwardable = typename __helpers::_forwardable_t<T>::type;
+
+    template<class TSrc, class TRes>
+        requires (std::is_copy_constructible_v<TRes>)
+    std::vector<TRes> vec_foreach(const std::vector<TSrc>& src, TRes (*action)(const TSrc&)) {
+        std::vector<TRes> res = {};
+        res.reserve(src.size());
+
+        for (auto& item : src) {
+            res.push_back(action(item));
+        }
+
+        return res;
+    }
+
+    template<class TSrc, class TRes>
+        requires (std::is_move_constructible_v<TRes> && !std::is_copy_constructible_v<TRes>)
+    std::vector<TRes> vec_foreach(const std::vector<TSrc>& src, TRes (*action)(const TSrc&)) {
+        std::vector<TRes> res = {};
+        res.reserve(src.size());
+
+        for (auto& item : src) {
+            res.emplace_back(std::move(action(item)));
+        }
+
+        return std::move(res);
+    }
 }
 
