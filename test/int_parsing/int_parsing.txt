@@ -5,7 +5,7 @@ section .data:
 
 
 sym integers:
-    data int.32 0b1001;
+    data int.32 /*aaaa*/0b1001;
     data int.32 0o1234567;
     data int.32 123456789;
     data int.32 0x13579bd;
@@ -17,6 +17,7 @@ sym floats:
     data float.64 12345.6789;
     data float.64 0x2468.ac;
 
+// hello
 section .text:
 
 /*
