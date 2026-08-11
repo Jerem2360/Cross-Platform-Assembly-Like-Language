@@ -3,27 +3,54 @@
 
 
 namespace cpasm {
-    struct IntToken : public Token {
+    enum class IntParseStatus : u8 {
+        NONE = 0,
+        BAD_DIGIT,
+        BAD_PREFIX,
+        BAD_SYNTAX,
+        OVERFLOW,
+    };
+
+    struct IntParseError {
+        IntParseStatus status;
+        char c = 0;
+        u16 position = 0;
+        u8 base = 0;
+
+        std::string format();
+
+        static constexpr IntParseError success() {
+            return {.status = IntParseStatus::NONE};
+        }
+
+        operator bool();
+    };
+
+
+    IntParseError parse_digits(Parser& parser, size_t* out, int base);
+
+    struct IntLiteralToken : public Token {
         using Token::Token;
 
-        int value = 0;
+        size_t value = 0;
+        i8 sign = 0;
 
         bool parse(Parser& parser);
     };
 
-    struct FloatToken : public Token {
+    struct FloatLiteralToken : public Token {
         using Token::Token;
 
-        float value = 0;
+        double value = 0;
 
         bool parse(Parser& parser);
     };
 
 
-    struct NumberToken : public Token {
+    struct NumberLiteralToken : public Token {
         using Token::Token;
 
-        std::variant<IntToken, FloatToken> value;
+        std::variant<IntLiteralToken, FloatLiteralToken> value;
 
         bool parse(Parser& parser);
     };

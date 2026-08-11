@@ -288,5 +288,29 @@ namespace cpasm {
 
         return std::move(res);
     }
+
+
+    /**
+     * Index an array by enum value. If the enum value is out of range, return _default.
+     */
+    template<class T, class Enum, size_t Len>
+        requires (std::is_enum_v<Enum> && !std::is_const_v<T>)
+    inline constexpr T array_index_by_enum(T (&array)[Len], Enum idx, T _default) {
+        auto under = get_underlying(idx);
+        if (under < 0 || under >= Len)
+            return _default;
+        return array[under];
+    }
+    /**
+     * Index an array by enum value. If the enum value is out of range, return _default.
+     */
+    template<class T, class Enum, size_t Len>
+        requires (std::is_enum_v<Enum> && !std::is_const_v<T>)
+    inline constexpr const T& array_index_by_enum(const T (&array)[Len], Enum idx, const T& _default) {
+        auto under = get_underlying(idx);
+        if (under < 0 || under >= Len)
+            return _default;
+        return array[under];
+    }
 }
 

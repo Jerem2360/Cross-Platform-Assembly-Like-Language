@@ -10,6 +10,10 @@ call build_one.bat token_base tokenizer
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat number_token tokenizer
 if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat string_token tokenizer
+if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat ident_token tokenizer
+if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat rules wordizer
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat wordizer wordizer
@@ -17,6 +21,8 @@ if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat parser parser
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat operators
+if "%ERRORLEVEL%" == "106" exit /B 1
+call build_one.bat formatter
 if "%ERRORLEVEL%" == "106" exit /B 1
 call build_one.bat main
 if "%ERRORLEVEL%" == "106" exit /B 1

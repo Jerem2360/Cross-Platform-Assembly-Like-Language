@@ -6,6 +6,7 @@
 #include <cstring>
 #include <fstream>
 #include <utility>
+// #include "formatter.hpp"
 
 
 struct CompileRules {
@@ -175,6 +176,8 @@ int main(int argc, char** argv) {
 
     if (!wordize(fs, rules.input_file))
         return false;
+
+    // std::cout << cpasm::format("First={0} && Second={1}\n", 10ull, 'c');
 
     return 0;
 }

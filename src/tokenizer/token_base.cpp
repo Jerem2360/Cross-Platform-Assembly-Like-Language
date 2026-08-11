@@ -11,7 +11,7 @@ namespace cpasm {
         return true;
     }
 
-    bool Token::_fail(std::vector<Token*> causes, std::string_view message, std::string_view class_name) {
+    bool Token::_fail(std::vector<Token*> causes, std::string_view message, std::string_view class_name, TokenErrorCode code) {
         this->_frame = std::make_unique<TokenStackTraceFrame>(
             vec_foreach<Token*, std::unique_ptr<TokenStackTraceFrame>>(causes, 
                 [](Token* const& t) -> std::unique_ptr<TokenStackTraceFrame> {
@@ -22,16 +22,18 @@ namespace cpasm {
             ),
             message,
             class_name,
-            this->_lineno
+            this->_lineno,
+            code
         );
         return false;
     }
-    bool Token::_fail(std::vector<std::unique_ptr<TokenStackTraceFrame>> causes, std::string_view message, std::string_view class_name) {
+    bool Token::_fail(std::vector<std::unique_ptr<TokenStackTraceFrame>> causes, std::string_view message, std::string_view class_name, TokenErrorCode code) {
         this->_frame = std::make_unique<TokenStackTraceFrame>(
             std::move(causes),
             message,
             class_name,
-            this->_lineno
+            this->_lineno,
+            code
         );
         return false;
     }
@@ -42,13 +44,19 @@ namespace cpasm {
         std::vector<std::unique_ptr<TokenStackTraceFrame>> causes,
         std::string_view msg,
         std::string_view tok_name,
-        int lineno
+        int lineno,
+        TokenErrorCode code
     ) :
         _children(std::move(causes)),
         _message(msg),
         _tok_name(tok_name),
-        _lineno(lineno)
+        _lineno(lineno),
+        _errcode(code)
     {}
+
+    TokenErrorCode TokenStackTraceFrame::code() const {
+        return this->_errcode;
+    }
 
     TokenErrorGroup::TokenErrorGroup() :
         _causes()
