@@ -16,6 +16,13 @@ namespace cpasm {
         INT_OVERFLOW,
     };
 
+    enum SupportType : u8 {
+        SUPPORTS_NONE = 0,
+        SUPPORTS_RUNTIME =  0b01,
+        SUPPORTS_COMPTIME = 0b10,
+        SUPPORTS_BOTH =     0b11,
+    };
+
 
     /**
      * Base class for all token types.
@@ -130,5 +137,27 @@ namespace cpasm {
             return Token::fail(tok, std::move(this->_causes), msg, code);
         }
     };
+
+    template<class T>
+    concept _has_support = requires() {
+        { T::support() } -> std::same_as<SupportType>;
+    };
+
+    /**
+     * Return the SupportType of a std::variant of tokens.
+     * The SupportType of the currently active token is used.
+     */
+    template<class ...T>
+        requires (std::is_base_of_v<Token, T> && ...)
+    SupportType token_variant_supports(const std::variant<T...>& value) {
+        SupportType result = SUPPORTS_NONE;
+
+        ((
+            (std::holds_alternative<T>(value) && _has_support<T>) ? 
+                (void)(result = T::support()) :
+                void()
+        ), ...);
+        return result;
+    }
 }
 

@@ -10,5 +10,14 @@ namespace cpasm {
 
         bool parse(Parser& parser);
     };
+
+    struct LabelUseToken : public Token {
+        using Token::Token;
+
+        IdentifierToken base;
+        IdentifierToken nested;
+
+        bool parse(Parser& parser);
+    };
 }
 

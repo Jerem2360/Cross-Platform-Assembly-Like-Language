@@ -7,6 +7,10 @@ namespace cpasm {
         using Token::Token;
 
         std::string value;
+        
+        static inline constexpr SupportType support() {
+            return SUPPORTS_COMPTIME;
+        }
 
         bool parse(Parser& parser);
     };
@@ -15,6 +19,10 @@ namespace cpasm {
         using Token::Token;
 
         std::string value;
+        
+        static inline constexpr SupportType support() {
+            return SUPPORTS_BOTH;
+        }
 
         bool parse(Parser& parser);
     };

@@ -35,6 +35,10 @@ namespace cpasm {
         size_t value = 0;
         i8 sign = 0;
 
+        static inline constexpr SupportType support() {
+            return SUPPORTS_BOTH;
+        }
+
         bool parse(Parser& parser);
     };
 
@@ -42,6 +46,10 @@ namespace cpasm {
         using Token::Token;
 
         double value = 0;
+        
+        static inline constexpr SupportType support() {
+            return SUPPORTS_BOTH;
+        }
 
         bool parse(Parser& parser);
     };
@@ -51,6 +59,10 @@ namespace cpasm {
         using Token::Token;
 
         std::variant<IntLiteralToken, FloatLiteralToken> value;
+        
+        static inline constexpr SupportType support() {
+            return SUPPORTS_BOTH;
+        }
 
         bool parse(Parser& parser);
     };

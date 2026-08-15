@@ -22,7 +22,7 @@ namespace cpasm {
     }
 
     /**
-     * Similar to std::snprintf, except the format string syntax is simpler but less powerful.
+     * Similar to std::sprintf, except the format string syntax is simpler but less powerful.
      */
     template<class ...T>
     std::string format(std::string_view fmt, T... args) {
