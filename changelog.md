@@ -15,6 +15,7 @@ This file summarizes the user-visible changes brought by version 0.3.
 - finished systemv varargs callconv
 - ran tests on WSL & Windows
 - [REFACTOR] added "0d" and "\d" prefix/escape sequence for base 10 numbers
+- [REFACTOR] added combinations of r, w, x to provide access rights for a given section (e.g.: `section .data rw:`; `section .text rx:`)
 
 
 # TODO list
@@ -22,5 +23,6 @@ This file summarizes the user-visible changes brought by version 0.3.
 - global architecture refactor
 - find more generic solution to call arguments being overridden by previous arg writes
 - allow support for runtime float constants on targets with different architecture than compiling machine
+- change the function statement to 'fun' instead of 'fn'
 
 

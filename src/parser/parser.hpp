@@ -52,6 +52,7 @@ namespace cpasm {
         Upon success, advances the parser up to the beginning of the operator.
         */
         const Operator* get_any_exact_operator(const Operator* op, size_t* offset) const;
+        bool get_keyword(std::string_view value, WordType type) const;
         /**
          * If the parser text starts with the provided operator, consume the operator's characters. Meant to be passed
          * the result of a get_operator call.
@@ -87,7 +88,26 @@ namespace cpasm {
 
         void consume_blanks();
 
+        /**
+         * Parse `tok` from the provided parser, and store the result in `tok`.
+         * If `restore` is true and the parsing fails, the parser's state is restored to that of before the parsing.
+         * Set `restore` to true if tok's direct parent may recover from an error. Otherwise set it to false.
+         * 
+         * A failure leaves tok's child-class-specific members in an indeterminate state.
+         */
+        template<class T>
+        inline bool parse_token(T* tok, bool restore) {
+            state st;
+            if (restore)
+                st = this->save();
+            
+            bool res = tok->parse(*this);
 
+            if (restore && !res)
+                st.restore();
+
+            return res;
+        }
         size_t remaining_words() const;
         bool exhausted() const;
         state save();

@@ -312,5 +312,81 @@ namespace cpasm {
             return _default;
         return array[under];
     }
+
+    namespace __helpers {
+        template<class TVariant, class TFunc, size_t ...IntSeq>
+        void _for_var_types_impl(TFunc&& func, std::index_sequence<IntSeq...>) {
+            ((
+                func.template operator()<std::variant_alternative_t<IntSeq, TVariant>>()
+            ), ...);
+        }
+    }
+
+    template<class TVariant, class TFunc>
+    void for_var_types(TFunc&& func) {
+        __helpers::_for_var_types_impl<TVariant>(
+            std::forward<TFunc>(func),
+            std::make_index_sequence<std::variant_size_v<TVariant>>()
+        );
+    }
+
+    /**
+     * Context object for loops that are generated at compile time.
+     */
+    class StaticLoopCtx {
+        bool _done = false;
+        int _msg = 0;
+
+    public:
+        StaticLoopCtx() = default;
+
+        /**
+         * Break out of the loop, optionally passing a non-zero message.
+         * Message 0 means absence of message. This message is returned to the caller.
+         */
+        inline void break_(int msg = 0) {
+            this->_done = true;
+            this->_msg = msg;
+        }
+        /**
+         * Pass a message to the caller, without breaking out of the loop.
+         * Overwrites the previously sent message. 
+         */
+        inline void send(int msg) {
+            this->_msg = msg;
+        }
+        inline bool _is_done() const {
+            return this->_done;
+        }
+        inline int _message() const {
+            return this->_msg;
+        }
+    };
+
+    template<class TVariant, class TFunc>
+    int for_var_types2(TFunc&& func) {
+        StaticLoopCtx ctx;
+
+        for_var_types<TVariant>([&]<class T>() {
+            if (ctx._is_done())
+                return;
+            func.template operator()<T>(ctx);
+        });
+
+        return ctx._message();
+    }
+
+    namespace __helpers {
+        template<class TVariant>
+        struct _foreach_type_helper {
+            template<class TFunc>
+            int operator %(TFunc&& func) {
+                return for_var_types2<TVariant>(func);
+            }
+        };
+    }
+
+#define _FOR_EACH_VAR_TYPE(...) \
+    ::cpasm::__helpers::_foreach_type_helper<__VA_ARGS__>() % [&]<class LoopType>(::cpasm::StaticLoopCtx& loop)
 }
 

@@ -6,6 +6,8 @@
 #include <cstring>
 #include <fstream>
 #include <utility>
+#include <string_view>
+#include "inline_kv_registry.hpp"
 // #include "formatter.hpp"
 
 
@@ -17,6 +19,46 @@ struct CompileRules {
     std::string_view arch_name = "";
     std::string_view env_name = "";
 };
+
+// struct Register;
+// struct RegisterRef {
+//     std::string_view name;
+
+//     Register* operator *();
+//     Register* operator ->();
+// };
+
+// struct Register {
+//     std::string_view name;
+//     uint8_t size;
+//     std::string_view parent_name;
+//     std::string_view hi_name;
+//     std::string_view lo_name;
+
+//     RegisterRef register_();
+// };
+
+// cpasm::InlineKeyRegistry<std::string_view, Register, &Register::name> registers;
+
+// Register* RegisterRef::operator *() {
+//     return registers.get(this->name);
+// }
+// Register* RegisterRef::operator ->() {
+//     return registers.get(this->name);
+// }
+
+// RegisterRef Register::register_() {
+//     if (registers.push(*this))
+//         return RegisterRef(this->name);
+//     return RegisterRef("");
+// }
+
+
+// auto RAX = Register("RAX", 8, "", "", "EAX").register_();
+// auto EAX = Register("EAX", 4, "RAX", "", "AX").register_();
+// auto AX = Register("AX", 2, "EAX", "AH", "AL").register_();
+// auto AL = Register("AL", 1, "AX", "", "").register_();
+// auto AH = Register("AH", 1, "AX", "", "").register_();
 
 enum class ArgFlag : cpasm::u8 {
     NONE,
@@ -163,6 +205,12 @@ static void init_compiler() {
     Operators.freeze(_debug_conditional("operator", ""));
 }
 
+class CA {};
+class CB {};
+class CD {};
+
+using V = std::variant<CA, CB, CD>;
+
 
 int main(int argc, char** argv) {
     init_compiler();
@@ -176,6 +224,19 @@ int main(int argc, char** argv) {
 
     if (!wordize(fs, rules.input_file))
         return false;
+
+    cpasm::for_var_types<V>([&]<class T>() {
+        std::cout << typeid(T).name() << '\n';
+    });
+
+    cpasm::for_var_types2<V>([&]<class T>(cpasm::StaticLoopCtx& ctx) {
+        std::string_view name = typeid(T).name();
+        std::cout << name << '\n';
+        if (name == "2CB") {
+            ctx.break_();
+            return;
+        }
+    });
 
     // std::cout << cpasm::format("First={0} && Second={1}\n", 10ull, 'c');
 

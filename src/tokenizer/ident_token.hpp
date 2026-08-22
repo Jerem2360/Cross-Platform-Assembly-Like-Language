@@ -1,5 +1,7 @@
 #pragma once
+#include <variant>
 #include "token_base.hpp"
+#include "string_token.hpp"
 
 
 namespace cpasm {
@@ -11,10 +13,18 @@ namespace cpasm {
         bool parse(Parser& parser);
     };
 
+    struct SymbolNameToken : public Token {
+        using Token::Token;
+
+        std::variant<IdentifierToken, IdentStringToken> value;
+
+        bool parse(Parser& parser);
+    };
+
     struct LabelUseToken : public Token {
         using Token::Token;
 
-        IdentifierToken base;
+        SymbolNameToken base;
         IdentifierToken nested;
 
         bool parse(Parser& parser);

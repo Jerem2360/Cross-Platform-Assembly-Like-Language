@@ -4,56 +4,6 @@
 
 
 namespace cpasm {
-    // static std::string _fmt_error(std::string_view fmt, char character, u16 pos, u8 base) {
-    //     std::stringstream res;
-
-    //     bool in_fmt = false;
-
-    //     for (std::string_view rest = fmt; rest.size(); rest = sslice(rest, 1, SIZE_INVALID)) {
-    //         if (rest.starts_with('{') && !in_fmt) {
-    //             in_fmt = true;
-    //             continue;
-    //         }
-    //         if (in_fmt) {
-    //             if (!rest.size()) {
-    //                 in_fmt = false;
-    //                 res << "{}";
-    //                 continue;
-    //             }
-    //             if (rest[0] >= '0' && rest[0] <= '9') {
-    //                 size_t idx = rest[0] - '0';
-    //                 switch (idx) {
-    //                 case 0:
-    //                     res << character;
-    //                     break;
-    //                 case 1:
-    //                     res << pos;
-    //                     break;
-    //                 case 2:
-    //                     res << (int)base;
-    //                     break;
-    //                 default:
-    //                     res << "{";
-    //                     break;
-    //                 }
-    //                 continue;
-    //             }
-    //             if (rest[0] == '}') {
-    //                 in_fmt = false;
-    //                 continue;
-    //             }
-
-                
-    //             res << "{}";
-    //             in_fmt = false;
-    //             continue;
-    //         }
-    //         res << rest[0];
-    //     }
-
-    //     return res.str();
-    // }
-
     static std::string_view _int_error_messages[] {
         "Success",
         "Invalid digit '{0}' at position {1} for number with base {2}",
@@ -269,23 +219,22 @@ namespace cpasm {
     }
 
     bool NumberLiteralToken::parse(Parser& parser) {
-
-        // idiom for when dealing with multiple possibilities that might all fail
         this->Token::parse(parser);
 
         TokenErrorGroup g;
 
-        auto& itok = this->value.emplace<IntLiteralToken>(this);
-        if (itok.parse(parser)) {
-            return true;
-        } else g.add(&itok);
-        
-        auto& ftok = this->value.emplace<FloatLiteralToken>(this);
-        if (ftok.parse(parser)) {
-            return true;
-        } else g.add(&ftok);
+        int res = _FOR_EACH_VAR_TYPE(decltype(this->value)) {
+            LoopType& tok = this->value.emplace<LoopType>(this);
+            if (parser.parse_token(&tok, true)) {
+                loop.break_(1);
+                return;
+            }
+            g.add(&tok);
+        };
 
-        return g.fail(this, "Hello");
+        if (!res)
+            return g.fail(this, "invalid number literal");
+        return true;
     }
 }
 

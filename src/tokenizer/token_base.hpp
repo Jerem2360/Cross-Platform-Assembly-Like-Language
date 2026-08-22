@@ -159,5 +159,51 @@ namespace cpasm {
         ), ...);
         return result;
     }
+
+    template<class T, class TFunc>
+    bool parse_list(
+        T* token, 
+        Parser& parser, 
+        TFunc&& parse_item,
+        const Operator* sep, 
+        const Operator* open = nullptr, 
+        const Operator* close = nullptr
+    ) {
+        if (open) {
+            if (!parser.get_exact_operator(open))
+                return Token::fail(token, sfmt("Missing opening operand '", open->name, "' for list."));
+            parser.advance_operator(open);
+        }
+
+        parser.consume_blanks();
+
+        for (size_t i = 0;; i++) {  // the i is literally just there to prevent the parser from requiring a comma before the first element
+            if (i) {
+                parser.consume_blanks();
+                if (!parser.get_exact_operator(sep))
+                    break;
+                parser.advance_operator(sep);
+                parser.consume_blanks();
+            }
+
+            if (!parse_item(parser))
+                break;
+        }
+
+        parser.consume_blanks();
+
+        // if (parser.get_exact_operator(sep)) {  // commas are allowed after the last item however
+        //     parser.advance_operator(sep);
+        //     parser.consume_blanks();
+        // }
+
+        if (close) {
+            if (!parser.get_exact_operator(close))
+                return Token::fail(token, sfmt("Missing opening operand '", close->name, "' for list."));
+            parser.advance_operator(close);
+        }
+
+        return true;
+    }
 }
 

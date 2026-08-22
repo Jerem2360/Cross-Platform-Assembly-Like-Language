@@ -133,6 +133,10 @@ namespace cpasm {
         return nullptr;
     }
 
+    bool Parser::get_keyword(std::string_view value, WordType type) const {
+        return (this->get_word_type() == type) && (this->get_word() == value);
+    }
+
     void Parser::advance_operator(const Operator* op) {
         if (!op)
             return;
