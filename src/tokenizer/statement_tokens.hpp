@@ -90,9 +90,9 @@ namespace cpasm {
     struct DataDeclStatementToken : public Token {
         using Token::Token;
 
-        IdentifierToken name;
         DataTypeToken type;
         std::optional<StaticOperandToken> value;
+        std::optional<IntLiteralToken> length;
 
         static constexpr bool NEED_SEMICOLON = true;
 
@@ -125,7 +125,21 @@ namespace cpasm {
         using Token::Token;
 
         IdentifierToken name;
+        /*
+        Normally this is a combination of 'r', 'w' and 'x' characters telling the OS if
+        user code can read, write and/or execute code respectively from this section.
+        If this is missing, the default value for that section is used.
+
+        e.g. section mysection rw:
+        declares a section called "mysection" with read and write access.
+
+        e.g. section mycodesection rx:
+        declares a section called "mycodesection" with read and execute access.
+
+        Arbitrary sections have no access at all by default.
+        */
         std::optional<IdentifierToken> access;
+        bool has_dot;
 
         static constexpr bool NEED_SEMICOLON = false;
 

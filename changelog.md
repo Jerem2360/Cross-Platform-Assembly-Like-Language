@@ -16,6 +16,7 @@ This file summarizes the user-visible changes brought by version 0.3.
 - ran tests on WSL & Windows
 - [REFACTOR] added "0d" and "\d" prefix/escape sequence for base 10 numbers
 - [REFACTOR] added combinations of r, w, x to provide access rights for a given section (e.g.: `section .data rw:`; `section .text rx:`)
+- [REFACTOR] added support for array data with predefined value.
 
 
 # TODO list
